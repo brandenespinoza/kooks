@@ -20,18 +20,26 @@ export function VerdictBand({
   isLoading,
   breakCount,
   activeIndex,
+  isHomeBreak = false,
 }: {
   label: string;
   verdict: string | null;
   isLoading: boolean;
   breakCount: number;
   activeIndex: number;
+  isHomeBreak?: boolean;
 }) {
   return (
     <header className="bg-action px-7 pt-[max(3.5rem,calc(env(safe-area-inset-top)+1rem))] pb-9">
       <div className="flex items-center justify-between gap-4">
-        <p className="text-[11px] font-normal uppercase tracking-[0.14em] text-action-fg/70">
-          {label}
+        <p className="flex min-w-0 items-center gap-2 text-[11px] font-normal uppercase tracking-[0.14em] text-action-fg/70">
+          <span className="truncate">{label}</span>
+          {/* FR-4a: the Home Break is distinguished by a word, not by colour alone. */}
+          {isHomeBreak && (
+            <span className="shrink-0 rounded-full border border-action-fg/30 px-1.5 py-0.5 text-[9px] leading-none text-action-fg/70">
+              Home
+            </span>
+          )}
         </p>
         <SwipeDots count={breakCount} activeIndex={activeIndex} />
       </div>

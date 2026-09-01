@@ -85,7 +85,15 @@ so that I can join Kooks in under 90 seconds with zero friction.
 
 ## Dev Notes
 
-### Setting a cookie from a tRPC mutation
+### Setting a cookie from a tRPC mutation — SUPERSEDED 2026-08-31
+
+> **This approach did not work and was replaced during Story 2.2.** `resHeaders` is flushed
+> before a procedure resolves under `httpBatchStreamLink`, and `cookies().set()` inside a
+> procedure is bypassed by tRPC's own `Response`. The account was created but the browser
+> never received a session. Onboarding is now a Server Action at
+> `src/app/join/[inviteToken]/actions.ts`, with the logic in `src/server/auth/join.ts`.
+> The curl-based verification below passed because a plain POST buffers the response, which
+> the real client does not. See the addendum in the Story 2.2 file.
 
 The fetch adapter exposes `resHeaders` on `createContext`. That object is threaded into the tRPC context and the mutation appends `Set-Cookie` to it. This is preferred over `cookies().set()` from `next/headers`, which is only valid inside a Server Action or Route Handler and couples the procedure to that execution context — the RSC caller in `src/trpc/server.ts` has no `resHeaders`, so the field is optional and cookie-setting procedures are only ever reached over HTTP.
 
@@ -121,7 +129,7 @@ End-to-end against the real dev database (`npm run dev` on :3001, seeded via `np
 | AC 5 — `/join-required` | `200`, zero `<form>` elements |
 | AC 10 — unknown token | `404`, zero `<form>` elements |
 | AC 2 — valid token | `200`, single `displayName` input; zero password/email/tel fields |
-| AC 3 — `joinViaInvite` | `200`; `Set-Cookie: kooks-session=…; Path=/; HttpOnly; SameSite=Strict; Max-Age=31536000` (no `Secure` in dev, as designed) |
+| AC 3 — `joinViaInvite` | `200`; correct `Set-Cookie` **over curl only** — the real browser client received no cookie. Fixed in Story 2.2 by moving to a Server Action. |
 | AC 3 — DB state | 2 users, mutual `crew_members` pair in **both** directions, `notification_prefs` all-true for both, 1 session |
 | AC 4 — `/` with cookie | `200`, renders the display name |
 | AC 6 — `crew.me` no cookie | `401 UNAUTHORIZED` |

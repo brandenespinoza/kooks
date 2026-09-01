@@ -36,7 +36,7 @@ Env vars are validated at startup by `src/env.js` (T3 env, Zod). Adding a var me
 
 **Conditions cache:** no cache layer — verdict, raw JSON, and timestamp live in columns on the `Break` table, written by jobs, read by `conditionsRouter`.
 
-**Auth:** `Session` row + `kooks-session` HttpOnly/SameSite=Strict cookie. `/join/[inviteToken]` creates `User` + `Session` + a mutual `CrewMember` pair. Sessions currently have no expiry (V1, tracked in deferred-work). `src/middleware.ts` runs on Edge Runtime and **cannot reach Prisma** — it does a cookie-presence check only; real session validation lives in `protectedProcedure`.
+**Auth:** `Session` row + `kooks-session` HttpOnly/SameSite=Strict cookie. `/join/[inviteToken]` creates `User` + `Session` + a mutual `CrewMember` pair via a **Server Action** (`src/app/join/[inviteToken]/actions.ts`), with the logic in `src/server/auth/join.ts`. **A tRPC procedure cannot set a cookie in this app** — `httpBatchStreamLink` flushes headers before a procedure resolves, and tRPC's fetch handler bypasses Next's cookie collection. Anything touching cookies (sign-out, for example) must be a Server Action or Route Handler. Sessions currently have no expiry (V1, tracked in deferred-work). `src/middleware.ts` runs on Edge Runtime and **cannot reach Prisma** — it does a cookie-presence check only; real session validation lives in `protectedProcedure`.
 
 **Database:** the full 8-model schema exists as of migration `20260901005755_full_schema`. Do not add a migration unless a change genuinely alters the schema. `User.homeBreakId` is deliberately not a foreign key (it would create a `User`↔`Break` cycle), so `break.delete` must null it manually on affected users.
 
@@ -73,9 +73,13 @@ This project is driven by BMad workflows; the specs are the source of truth for 
 
 **Epic 1 is complete.** Auth works end to end: `src/server/auth/` (session helpers + real `assertCrewMember`), `crewRouter` (`joinViaInvite`, `me`), `src/middleware.ts`, the `/join/[inviteToken]` and `/join-required` routes, and `prisma/seed.ts`. `protectedProcedure` and the `{ db, user, session }` context exist in `src/server/api/trpc.ts`.
 
-**Story 2.1 is done:** `/` renders the D3 Break screen (`BreakScreen` -> `VerdictBand` + `CrewZone`) with skeletons, `SwipeDots`, and empty states. `BreakScreen` is the only component in that subtree that calls tRPC — everything below it is presentational.
+**Stories 2.1–2.2 are done:** `/` renders the D3 Break screen (`BreakScreen` -> `VerdictBand` + `CrewZone`) with skeletons, `SwipeDots`, empty states, Leaflet pin-drop Break creation, Home Break selection, and delete. `BreakScreen` is the only component in that subtree that calls tRPC — everything below it is presentational.
 
-Still absent: `src/server/{jobs,push}/`, every router except `crew` and `break`, and `instrumentation.ts` is still a stub (pg-boss lands in Story 3.1). No `CheckInCTA` (Epic 4), no swipe gesture (Story 2.3), no Break creation (Story 2.2).
+Still absent: `src/server/{jobs,push}/`, every router except `crew` and `break`, and `instrumentation.ts` is still a stub (pg-boss lands in Story 3.1). No `CheckInCTA` (Epic 4), no swipe gesture (Story 2.3).
+
+**UI conventions learned the hard way:** mount only one vaul drawer at a time (two roots fight over pointer handling; closing one to open another leaves the second invisible). Toasts are `position="top-center"` because every surface here is a bottom sheet. Leaflet must be `next/dynamic` with `ssr: false`.
+
+**Verify UI against `npm run build && npm start`, not `npm run dev`** — the dev server degrades badly under sustained HMR (10-25s responses, results varying run to run for identical code).
 
 **Safe-area insets live on pages and zones, not the shell.** The `layout.tsx` wrapper is a `flex flex-col` with no `pt-safe`/`pb-safe`, so the navy `VerdictBand` can paint behind the iOS status bar (UX-DR1). Any new top-level page must declare its own `pt-safe pb-safe`.
 

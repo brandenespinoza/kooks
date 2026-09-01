@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { api } from "~/trpc/react";
+import { joinViaInviteAction } from "~/app/join/[inviteToken]/actions";
 import { OnboardingForm } from "~/components/OnboardingForm";
 
 /**
@@ -25,30 +25,36 @@ export function JoinFlow({
   isSelfInvite: boolean;
 }) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [submitting, setSubmitting] = useState(false);
 
-  const join = api.crew.joinViaInvite.useMutation({
-    onSuccess: (result) => {
+  function submit(displayName?: string) {
+    setSubmitting(true);
+    startTransition(async () => {
+      const result = await joinViaInviteAction({ inviteToken, displayName });
+      if (!result.ok) {
+        setSubmitting(false);
+        toast.error(result.error);
+        return;
+      }
       if (result.connectedTo) {
         toast.success(`You're connected with ${result.connectedTo}`);
       }
       // replace(), not push() — the invite URL should not sit in the back stack.
       router.replace("/");
       router.refresh();
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
-  });
+    });
+  }
 
-  // Fires once. A ref rather than a dependency list because React 18 StrictMode
+  // Fires once. A ref rather than a dependency list because React StrictMode
   // double-invokes effects in dev, and this one performs a write.
   const autoJoinFired = useRef(false);
-
   useEffect(() => {
     if (!isAuthenticated || autoJoinFired.current) return;
     autoJoinFired.current = true;
-    join.mutate({ inviteToken });
-  }, [isAuthenticated, inviteToken, join]);
+    submit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   if (isAuthenticated) {
     return (
@@ -69,8 +75,8 @@ export function JoinFlow({
   return (
     <OnboardingForm
       inviterName={inviterName}
-      isPending={join.isPending}
-      onSubmit={(displayName) => join.mutate({ inviteToken, displayName })}
+      isPending={submitting || isPending}
+      onSubmit={(displayName) => submit(displayName)}
     />
   );
 }

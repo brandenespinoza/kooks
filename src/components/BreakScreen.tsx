@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
-
 import { api } from "~/trpc/react";
 import { VerdictBand } from "~/components/VerdictBand";
 import { CrewZone } from "~/components/CrewZone";
 import { EmptyBreaksState } from "~/components/EmptyBreaksState";
+import { AddBreakDrawer } from "~/components/AddBreakDrawer";
+import { BreaksDrawer } from "~/components/BreaksDrawer";
 
 /**
  * Full-viewport root for the D3 Verdict Band layout (UX-DR1).
@@ -19,6 +19,8 @@ import { EmptyBreaksState } from "~/components/EmptyBreaksState";
  */
 export function BreakScreen() {
   const [activeIndex] = useState(0);
+  const [addOpen, setAddOpen] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
 
   // isPending, never a hand-rolled loading useState.
   const breaks = api.break.list.useQuery(undefined, {
@@ -56,11 +58,10 @@ export function BreakScreen() {
 
   if (breaks.data.length === 0) {
     return (
-      <EmptyBreaksState
-        onAddBreak={() =>
-          toast("Adding breaks arrives with the map flow in the next story.")
-        }
-      />
+      <>
+        <EmptyBreaksState onAddBreak={() => setAddOpen(true)} />
+        {addOpen && <AddBreakDrawer open onOpenChange={setAddOpen} />}
+      </>
     );
   }
 
@@ -74,8 +75,22 @@ export function BreakScreen() {
         isLoading={false}
         breakCount={breaks.data.length}
         activeIndex={activeIndex}
+        isHomeBreak={active.isHomeBreak}
       />
-      <CrewZone isLoading={false} updatedAt={active.conditionsUpdatedAt} />
+      <CrewZone
+        isLoading={false}
+        updatedAt={active.conditionsUpdatedAt}
+        onManageBreaks={() => setManageOpen(true)}
+        onAddBreak={() => setAddOpen(true)}
+      />
+
+      {/* Mount only the drawer that is open. Two vaul roots in the same tree fight over
+          pointer handling — the idle one dismisses the active one on the first interaction
+          inside it, which silently closed the Add drawer the moment you tapped the map. */}
+      {manageOpen && (
+        <BreaksDrawer open onOpenChange={setManageOpen} />
+      )}
+      {addOpen && <AddBreakDrawer open onOpenChange={setAddOpen} />}
     </div>
   );
 }

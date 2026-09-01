@@ -1,3 +1,5 @@
+import { Plus, SlidersHorizontal } from "lucide-react";
+
 import { EmptyCrewState } from "~/components/EmptyCrewState";
 
 /**
@@ -12,15 +14,46 @@ import { EmptyCrewState } from "~/components/EmptyCrewState";
 export function CrewZone({
   isLoading,
   updatedAt,
+  onManageBreaks,
+  onAddBreak,
 }: {
   isLoading: boolean;
   updatedAt: Date | null;
+  onManageBreaks?: () => void;
+  onAddBreak?: () => void;
 }) {
   return (
     <section className="flex flex-1 flex-col px-7 pt-8 pb-[max(2.25rem,calc(env(safe-area-inset-bottom)+0.75rem))]">
-      <h2 className="text-[10px] font-normal uppercase tracking-[0.14em] text-text-secondary">
-        Crew
-      </h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-[10px] font-normal uppercase tracking-[0.14em] text-text-secondary">
+          Crew
+        </h2>
+        <div className="-mr-3 flex items-center">
+          {onAddBreak && (
+            <button
+              type="button"
+              onClick={onAddBreak}
+              aria-label="Add a break"
+              className="grid size-12 place-items-center rounded-full"
+            >
+              <Plus className="size-4 text-text-secondary" aria-hidden="true" />
+            </button>
+          )}
+          {onManageBreaks && (
+            <button
+              type="button"
+              onClick={onManageBreaks}
+              aria-label="Manage your breaks"
+              className="grid size-12 place-items-center rounded-full"
+            >
+              <SlidersHorizontal
+                className="size-4 text-text-secondary"
+                aria-hidden="true"
+              />
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="mt-3 flex-1">
         {isLoading ? <CrewSkeleton /> : <EmptyCrewState />}

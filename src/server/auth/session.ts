@@ -54,10 +54,24 @@ export async function deleteSession(token: string) {
 }
 
 /**
- * Builds the Set-Cookie value for a session token.
+ * Cookie attributes for the session, shaped for `cookies().set()` from next/headers.
  *
- * `Secure` is omitted in development so the cookie survives plain-HTTP localhost;
- * in production TLS is terminated by Nginx Proxy Manager upstream.
+ * `secure` is omitted in development so the cookie survives plain-HTTP localhost; in
+ * production TLS is terminated by Nginx Proxy Manager upstream.
+ */
+export function sessionCookieOptions() {
+  return {
+    path: "/",
+    httpOnly: true,
+    sameSite: "strict" as const,
+    secure: env.NODE_ENV === "production",
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  };
+}
+
+/**
+ * Builds a raw Set-Cookie value. Retained for any non-Next context (a plain Response, a
+ * test); the app itself sets the cookie through `cookies()` — see sessionCookieOptions.
  */
 export function serializeSessionCookie(token: string): string {
   const parts = [

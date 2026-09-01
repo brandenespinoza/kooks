@@ -36,7 +36,9 @@ export default function RootLayout({
             {children}
           </div>
         </TRPCReactProvider>
-        <Toaster />
+        {/* Top-center: every interactive surface in this app is a bottom sheet, and a
+            bottom-anchored toast sits on top of the drawer list and the check-in CTA. */}
+        <Toaster position="top-center" />
       </body>
     </html>
   );

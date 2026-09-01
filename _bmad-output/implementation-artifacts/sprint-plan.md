@@ -2,7 +2,7 @@
 
 Single source of truth for story status. Individual story files carry their own `Status:` line; **this file is the index that keeps them honest.** Story 1.2 sat at `ready-for-dev` for months while fully implemented because nothing reconciled the two — that is what this file exists to prevent.
 
-Last reconciled: **2026-08-31** (Story 2.1 complete).
+Last reconciled: **2026-08-31** (Story 2.2 complete).
 
 ## Status legend
 
@@ -19,15 +19,15 @@ Last reconciled: **2026-08-31** (Story 2.1 complete).
 |---|---|---|---|
 | 1.1 Project Scaffold & Infrastructure | `done` | — | AR-1–14. See story file for review findings. |
 | 1.2 App Shell & Design System | `done` | — | UX-DR2/3/10/13. Reconciled 2026-08-31. **AC 2 (Inter) was silently unmet until Story 2.1** — a circular `--font-sans` meant every page rendered in Times. Fixed in 2.1. Device/viewport check completed in 2.1. |
-| 1.3 Invite Link Join & Account Creation | `done` | FR-22, FR-23 | Landed 2026-08-31. Absorbed the `CrewMember` pair and real `assertCrewMember` from Epic 5. **Epic 1 complete.** |
+| 1.3 Invite Link Join & Account Creation | `done` | FR-22, FR-23 | Landed 2026-08-31. Absorbed the `CrewMember` pair and real `assertCrewMember` from Epic 5. **Onboarding moved from tRPC to a Server Action during 2.2** — a tRPC procedure cannot set a cookie here. |
 
 ## Epic 2 — Breaks & Navigation
 
 | Story | Status | FRs | Notes |
 |---|---|---|---|
 | 2.1 Break Screen Shell with D3 Layout | `done` | — | Landed 2026-08-31. UX-DR1/8/9 + early UX-DR6. Verified in a real browser at both viewports; caught and fixed the Inter font bug carried since 1.2. |
-| 2.2 Break Creation & Management | `ready-for-dev` | FR-1, 3, 4a | **Next up.** No migration task. Leaflet needs `ssr: false`. `break.delete` must null dependent `homeBreakId`. Wire the existing `EmptyBreaksState` CTA to the pin-drop flow. |
-| 2.3 Swipe Navigation & Saving Crew Breaks | `backlog` | FR-2, 4b | |
+| 2.2 Break Creation & Management | `done` | FR-1, 3, 4a | Landed 2026-08-31. Leaflet pin-drop, home break, delete. Also fixed onboarding, which had never set a cookie in a browser — see the addendum in the 2.2 story file. |
+| 2.3 Swipe Navigation & Saving Crew Breaks | `ready-for-dev` | FR-2, 4b | **Next up.** Lift `activeIndex` out of `BreakScreen` into `BreakSwipeStack`. Adds `break.save`/`break.unsave`. Respect `prefers-reduced-motion`. |
 
 ## Epic 3 — Conditions
 
@@ -84,3 +84,9 @@ epics.md Story 1.3 specified a stub that throws `FORBIDDEN` unconditionally unti
 **6. ~~Deploy is manual-dispatch only.~~ RESOLVED 2026-08-31.** `deploy.yml` was gated during the replan and the `push: branches: [main]` trigger was restored when Story 1.3 landed. `workflow_dispatch` is retained for manual runs. **The next push to `main` will deploy** — it requires the `VPS_HOST`, `VPS_USER`, and `VPS_SSH_KEY` repository secrets.
 
 **7. Design tokens fail WCAG AA on parchment (NFR-9) — decision needed.** Measured during Story 2.1: `--text-secondary` 3.50:1, `--present` 3.74:1, `--stale` 1.71:1 against `--bg`, all below the 4.5:1 required for the 10–16px text they are used on. The UX spec asserts these pass; they do not. Minimum darkening that preserves hue and saturation: `--text-secondary` -> `#776c5f`, `--present` -> `#297c4e`, `--stale` -> `#796c59`. Note `--stale` at AA is no longer visually "muted", which fights its purpose — the alternative is to enlarge the timestamp instead. This is a one-line change per token in `globals.css` because everything uses the token utilities. Resolve before the Story 6.4 accessibility audit, not during it.
+
+**8. A tRPC procedure cannot set a cookie in this app.** The client uses `httpBatchStreamLink` (headers flush before a procedure resolves) and tRPC's fetch handler builds its own `Response` (bypassing Next's cookie collection). Both `ctx.resHeaders.append("Set-Cookie", …)` and `cookies().set()` inside a procedure are silently dropped. Anything that must set or clear a cookie — sign-out in Story 5.3, for instance — belongs in a Server Action or a Route Handler, not a router.
+
+**9. Verify UI against a production build, not `npm run dev`.** The dev server degrades badly under sustained HMR: response times climbed to 10-25s and browser test results varied run to run for identical code. `npm run build && npm start` is stable and exercises the real artifact.
+
+**10. One vaul drawer at a time.** Closing one drawer to open another leaves the second invisible, and mounting two roots at once lets the idle one interfere. Mount only the open drawer. Relevant to `CheckInDrawer` in Epic 4.
