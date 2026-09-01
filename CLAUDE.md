@@ -17,6 +17,7 @@ npm run build            # next build (runs env validation via next.config.js)
 ./start-database.sh      # local postgres container from DATABASE_URL in .env
 npm run db:migrate:dev   # prisma migrate dev (creates migration + applies)
 npm run db:generate      # prisma generate (also runs postinstall)
+npm run db:seed          # seed primary user from SEED_INVITE_TOKEN (idempotent)
 npm run db:studio        # prisma studio
 docker compose up --build   # full app + db stack, mirrors production
 ```
@@ -67,13 +68,17 @@ This project is driven by BMad workflows; the specs are the source of truth for 
 - `_bmad-output/planning-artifacts/epics.md` — 6 epics / 19 stories with acceptance criteria and the FR→file map.
 - `_bmad-output/planning-artifacts/ux-design-specification.md` — component-level design spec.
 - `_bmad-output/implementation-artifacts/sprint-plan.md` — **status index across all 19 stories, and the cross-cutting replan corrections. Read this first.** Individual story files carry their own `Status:`, but this file is what keeps them honest.
-- `_bmad-output/implementation-artifacts/` — one file per story with `Status:`, tasks, and dev notes. Stories 1.1 and 1.2 are done; **1.3 is next** and has no story file yet — generate it with `bmad-create-story`.
-- `_bmad-output/implementation-artifacts/deferred-work.md` — accepted V1 shortcuts. Check here before "fixing" something that looks wrong (hardcoded compose password, `caller as any` in `src/trpc/server.ts`, no session expiry, 1.18GB Docker image, `pino` not installed).
+- `_bmad-output/implementation-artifacts/` — one file per story with `Status:`, tasks, and dev notes. Epic 1 (1.1–1.3) is done; **Story 2.1 is next** and has no story file yet — generate it with `bmad-create-story`.
+- `_bmad-output/implementation-artifacts/deferred-work.md` — accepted V1 shortcuts. Check here before "fixing" something that looks wrong (hardcoded compose password, no session expiry, no sign-out, 1.18GB Docker image, `pino` not installed).
 
-Only Epic 1 scaffolding exists so far: `appRouter` is empty, `instrumentation.ts` is a stub, and `src/app/page.tsx` is a placeholder. `src/server/{api/routers,auth,jobs,push}/` do not exist yet. `src/server/api/trpc.ts` exports only `publicProcedure` — `protectedProcedure` and the `{ db, user, session }` context are built in Story 1.3.
+**Epic 1 is complete.** Auth works end to end: `src/server/auth/` (session helpers + real `assertCrewMember`), `crewRouter` (`joinViaInvite`, `me`), `src/middleware.ts`, the `/join/[inviteToken]` and `/join-required` routes, and `prisma/seed.ts`. `protectedProcedure` and the `{ db, user, session }` context exist in `src/server/api/trpc.ts`.
 
-**`assertCrewMember(ctx, breakId)` ships real in Story 1.3, not stubbed.** The original plan deferred it to Epic 5 as a helper that throws `FORBIDDEN` unconditionally; combined with enforcement rule 2 that would make every Break, Conditions, and Check-In procedure fail closed through Epics 2–4. The `CrewMember` model now exists, so implement the real check: allow when the user created the Break, shares a `CrewMember` row with its creator, or has it in their `UserSavedBreak`.
+Still absent: `src/server/{jobs,push}/`, every router except `crew`, and `instrumentation.ts` is still a stub (pg-boss lands in Story 3.1). `src/app/page.tsx` is a placeholder that only proves the session resolves — Epic 2 replaces it with the Break swipe stack.
+
+**`assertCrewMember(ctx, breakId)` is real, not a stub** — call it at the top of anything touching break-specific data (rule 2). It allows the Break's creator, anyone sharing a `CrewMember` row with the creator, and anyone who has the Break in their `UserSavedBreak`; throws `FORBIDDEN` otherwise.
+
+**Cookies from tRPC:** mutations set cookies by appending to `ctx.resHeaders` (threaded in from the fetch adapter), never via `cookies().set()`. `resHeaders` is optional — the RSC caller has none.
 
 Implementation has diverged from the architecture doc in a few places — the code wins: PWA uses `@serwist/next` (not `@ducanh2912/next-pwa`, and it is installed but not yet wired to anything), shadcn/ui runs the `base-nova` style on `@base-ui/react`, and `pino` is not installed (logging is `console` for now).
 
-**Deploy is gated.** `deploy.yml` is `workflow_dispatch` only. Restore the `push: branches: [main]` trigger as the final task of Story 1.3.
+**Deploy is live.** `deploy.yml` fires on push to `main` (plus manual dispatch). It needs the `VPS_HOST`, `VPS_USER`, and `VPS_SSH_KEY` repository secrets.

@@ -24,9 +24,7 @@ const createContext = cache(async () => {
 const getQueryClient = cache(createQueryClient);
 const caller = createCaller(createContext);
 
-// AppRouter is empty during bootstrap — type resolves once first router is added in Story 3+
-// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
 export const { trpc: api, HydrateClient } = createHydrationHelpers<AppRouter>(
-  caller as any,
+  caller,
   getQueryClient
 );

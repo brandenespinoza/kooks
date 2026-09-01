@@ -4,7 +4,7 @@
 
 - Session has no expiry field — by design for V1; cleanup job via pg-boss is planned in Story 3.1
 - `inviteToken` never rotates — V1 known limitation; revisit if app goes beyond personal crew
-- `caller as any` cast in `src/trpc/server.ts` — temporary bootstrap; resolves automatically when first tRPC router is added in Story 3+
+- ~~`caller as any` cast in `src/trpc/server.ts`~~ — **RESOLVED 2026-08-31** in Story 1.3; the cast was removed once `crewRouter` made `appRouter` non-empty
 - Hardcoded postgres password in `docker-compose.yml` (`POSTGRES_PASSWORD: password`) — dev convenience for local use; change before exposing DB to any network
 - Image tagged as `:latest` only in CI/CD — no immutable rollback path; acceptable for V1 personal deployment
 - `timingMiddleware` adds artificial dev delay without `NODE_ENV !== "test"` guard — no test runner configured in Story 1.1; revisit when tests are added
@@ -21,3 +21,12 @@
 - **Safe-area behaviour never verified on a real device.** Insets always resolve to 0 outside iOS, so no amount of desktop-browser checking proves this. Carry into Story 2.1, the first story with real UI to look at.
 - **`Session` still has no expiry** and the 1.1 note pointed at "Story 3.1" for a cleanup job — Story 3.1 as written in epics.md contains no such task. Either add it to 3.1 explicitly or accept sessions as permanent for V1 and say so. Currently it is neither.
 - **Tailwind scans only `src/`** via `@import "tailwindcss" source("../")`. Without it, Tailwind v4 auto-scans the whole repo and mints dead utility rules from class names quoted in markdown docs. If component code is ever added outside `src/`, this must be widened.
+
+## Deferred from: Story 1.3 (2026-08-31)
+
+- **`prisma/seed.ts` instantiates `PrismaClient` directly**, violating enforcement rule 3 ("import `db` from `src/server/db.ts` — never instantiate Prisma elsewhere"). The seed runs outside the Next.js runtime, where neither the `~` path alias nor `~/env` validation are available. Deliberate, scoped to this one build-time script; do not use it as precedent in application code.
+- **`src/middleware.ts` inlines the `kooks-session` cookie name** rather than importing `SESSION_COOKIE_NAME` from `~/server/auth/session`. Edge Runtime cannot load that module (it reaches Prisma and `~/env`). Two string literals now have to stay in sync — if the cookie name ever changes, change both.
+- **Sessions still never expire and are never cleaned up.** `Max-Age` on the cookie is one year; the `sessions` row lives forever. The 1.1 note pointed at "Story 3.1" for a cleanup job, but Story 3.1 as written has no such task. Still unresolved — decide when pg-boss lands in 3.1.
+- **`tsx` added as a devDependency** solely to run the TypeScript seed. Prisma's documented approach for ESM TypeScript projects; it does not ship in the runtime image.
+- **`crew.joinViaInvite` is unauthenticated and unrate-limited.** Anyone holding an invite token can create unlimited accounts. Accepted at a 2–3 person crew scale — the token is the only secret and is shared privately — but it is the one public write endpoint in the app. Revisit alongside invite-link expiry/revocation if Kooks ever goes beyond a personal crew.
+- **No sign-out.** `deleteSession` and `serializeClearedSessionCookie` exist in `src/server/auth/session.ts` but nothing calls them. There is no UI or procedure to end a session; clearing the cookie requires browser settings. Wire into the settings screen in Story 5.3.

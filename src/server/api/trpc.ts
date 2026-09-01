@@ -6,11 +6,12 @@
  * TL;DR - This is where all the tRPC server stuff is created and plugged in. The pieces you will
  * need to use are documented accordingly near the end.
  */
-import { initTRPC } from "@trpc/server";
+import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
 import { db } from "~/server/db";
+import { getSessionFromHeaders } from "~/server/auth/session";
 
 /**
  * 1. CONTEXT
@@ -24,9 +25,21 @@ import { db } from "~/server/db";
  *
  * @see https://trpc.io/docs/server/context
  */
-export const createTRPCContext = async (opts: { headers: Headers }) => {
+export const createTRPCContext = async (opts: {
+  headers: Headers;
+  /**
+   * Response headers from the fetch adapter. Present only over HTTP — the RSC caller in
+   * `~/trpc/server` has none. Procedures that set cookies (currently only
+   * `crew.joinViaInvite`) append `Set-Cookie` here.
+   */
+  resHeaders?: Headers;
+}) => {
+  const session = await getSessionFromHeaders(opts.headers);
+
   return {
     db,
+    session,
+    user: session?.user ?? null,
     ...opts,
   };
 };
@@ -104,3 +117,25 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
  * are logged in.
  */
 export const publicProcedure = t.procedure.use(timingMiddleware);
+
+/**
+ * Protected (authenticated) procedure
+ *
+ * Use this for every procedure except the invite-link and onboarding flow (enforcement rule 1).
+ * Guarantees `ctx.user` and `ctx.session` are non-null for downstream resolvers.
+ */
+export const protectedProcedure = t.procedure
+  .use(timingMiddleware)
+  .use(({ ctx, next }) => {
+    if (!ctx.session || !ctx.user) {
+      throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+
+    return next({
+      ctx: {
+        ...ctx,
+        session: ctx.session,
+        user: ctx.user,
+      },
+    });
+  });

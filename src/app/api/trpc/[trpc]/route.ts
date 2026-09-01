@@ -9,9 +9,11 @@ import { createTRPCContext } from "~/server/api/trpc";
  * This wraps the `createTRPCContext` helper and provides the required context for the tRPC API when
  * handling a HTTP request (e.g. when you make requests from Client Components).
  */
-const createContext = async (req: NextRequest) => {
+const createContext = async (req: NextRequest, resHeaders: Headers) => {
   return createTRPCContext({
     headers: req.headers,
+    // Lets procedures set cookies on the response — the session cookie in crew.joinViaInvite.
+    resHeaders,
   });
 };
 
@@ -20,7 +22,7 @@ const handler = (req: NextRequest) =>
     endpoint: "/api/trpc",
     req,
     router: appRouter,
-    createContext: () => createContext(req),
+    createContext: ({ resHeaders }) => createContext(req, resHeaders),
     onError:
       env.NODE_ENV === "development"
         ? ({ path, error }) => {

@@ -1,9 +1,10 @@
 name: Deploy
 
-# Manual-dispatch only until Epic 1 (auth + onboarding) is complete.
-# Restore the `push: branches: [main]` trigger as the final task of Epic 1 —
-# see _bmad-output/implementation-artifacts/sprint-plan.md.
+# Epic 1 complete (Story 1.3 landed 2026-08-31) — auto-deploy restored.
+# workflow_dispatch is kept so a deploy can also be triggered by hand.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:

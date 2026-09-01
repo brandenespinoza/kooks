@@ -2,7 +2,7 @@
 
 Single source of truth for story status. Individual story files carry their own `Status:` line; **this file is the index that keeps them honest.** Story 1.2 sat at `ready-for-dev` for months while fully implemented because nothing reconciled the two — that is what this file exists to prevent.
 
-Last reconciled: **2026-08-31** (full audit of tree vs. artifacts).
+Last reconciled: **2026-08-31** (Story 1.3 complete; Epic 1 closed).
 
 ## Status legend
 
@@ -19,13 +19,13 @@ Last reconciled: **2026-08-31** (full audit of tree vs. artifacts).
 |---|---|---|---|
 | 1.1 Project Scaffold & Infrastructure | `done` | — | AR-1–14. See story file for review findings. |
 | 1.2 App Shell & Design System | `done` | — | UX-DR2/3/10/13. Reconciled 2026-08-31; three documented divergences. Device-level safe-area check still outstanding — carried into 2.1. |
-| 1.3 Invite Link Join & Account Creation | `backlog` | FR-22, FR-23 | **Next up.** Scope expanded — see corrections below. |
+| 1.3 Invite Link Join & Account Creation | `done` | FR-22, FR-23 | Landed 2026-08-31. Absorbed the `CrewMember` pair and real `assertCrewMember` from Epic 5. **Epic 1 complete.** |
 
 ## Epic 2 — Breaks & Navigation
 
 | Story | Status | FRs | Notes |
 |---|---|---|---|
-| 2.1 Break Screen Shell with D3 Layout | `backlog` | — | UX-DR1/8/9. First real UI — do the deferred device/viewport validation here. |
+| 2.1 Break Screen Shell with D3 Layout | `ready-for-dev` | — | **Next up.** UX-DR1/8/9. First real UI — do the deferred device/viewport validation here, and replace the `src/app/page.tsx` placeholder. |
 | 2.2 Break Creation & Management | `backlog` | FR-1, 3, 4a | No migration task (schema landed 2026-08-31). Leaflet needs `ssr: false`. `break.delete` must null dependent `homeBreakId`. |
 | 2.3 Swipe Navigation & Saving Crew Breaks | `backlog` | FR-2, 4b | |
 
@@ -68,7 +68,9 @@ Last reconciled: **2026-08-31** (full audit of tree vs. artifacts).
 
 These supersede the corresponding text in `epics.md` and `architecture.md`. Apply them when generating each story file.
 
-**1. `assertCrewMember` ships real in Story 1.3, not stubbed.**
+**1. ~~`assertCrewMember` ships real in Story 1.3, not stubbed.~~ DONE 2026-08-31** — implemented in `src/server/auth/assert-crew-member.ts` and verified against all six cases.
+
+Original note:
 epics.md Story 1.3 specified a stub that throws `FORBIDDEN` unconditionally until Epic 5, while enforcement rule 2 requires calling it in every break-scoped procedure. Followed literally, Epics 2–4 would have been untestable. Since the full schema (including `CrewMember`) landed on 2026-08-31, implement the real check immediately: the requesting user must share a crew row with the Break's creator, or have the Break in their own `UserSavedBreak`.
 
 **2. Full Prisma schema already exists.** All 8 models were created in migration `20260901005755_full_schema`. Delete the "add model X via `prisma migrate dev`" task from Stories 2.2, 3.1, 4.1, 5.1, and 6.2. A migration is only needed if a story genuinely changes the schema.
@@ -79,4 +81,4 @@ epics.md Story 1.3 specified a stub that throws `FORBIDDEN` unconditionally unti
 
 **5. Design tokens are Tailwind utilities, not bracket syntax.** Write `bg-action` / `text-text-secondary`, never `bg-[--action]`. The latter compiles to invalid CSS that browsers discard silently. See `CLAUDE.md` for the full token list.
 
-**6. Deploy is manual-dispatch only.** `deploy.yml` was gated during the replan. **Restore the `push: branches: [main]` trigger as the final task of Story 1.3**, once there is a working authenticated app to deploy.
+**6. ~~Deploy is manual-dispatch only.~~ RESOLVED 2026-08-31.** `deploy.yml` was gated during the replan and the `push: branches: [main]` trigger was restored when Story 1.3 landed. `workflow_dispatch` is retained for manual runs. **The next push to `main` will deploy** — it requires the `VPS_HOST`, `VPS_USER`, and `VPS_SSH_KEY` repository secrets.
