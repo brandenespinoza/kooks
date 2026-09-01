@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kooks — Theme Visualizer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #fff;
+      padding: 40px 20px 80px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 13px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #666;
+      margin-bottom: 48px;
+    }
+
+    .themes {
+      display: flex;
+      gap: 32px;
+      justify-content: center;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+
+    .theme-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: 320px;
+    }
+
+    .theme-label {
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #555;
+    }
+
+    /* ── Phone shell ── */
+    .phone {
+      width: 320px;
+      height: 640px;
+      border-radius: 44px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.7);
+      border: 1.5px solid rgba(255,255,255,0.06);
+    }
+
+    .screen {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 56px 28px 36px;
+      gap: 0;
+      position: relative;
+    }
+
+    /* ── Break name ── */
+    .break-name {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    /* ── Swipe dots ── */
+    .swipe-dots {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 28px;
+    }
+    .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+    }
+    .dot.active { opacity: 1; }
+    .dot.inactive { opacity: 0.25; }
+
+    /* ── Verdict ── */
+    .verdict {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.18;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+
+    /* ── Raw data toggle ── */
+    .raw-toggle {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 36px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      opacity: 0.45;
+      cursor: pointer;
+    }
+    .raw-toggle::after {
+      content: '›';
+      font-size: 13px;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px;
+      margin-bottom: 24px;
+      opacity: 0.12;
+    }
+
+    /* ── Crew section ── */
+    .crew-label {
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      opacity: 0.4;
+    }
+
+    .crew-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 32px;
+      flex: 1;
+    }
+
+    .crew-member {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .member-name {
+      font-size: 16px;
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .member-eta {
+      font-size: 13px;
+      opacity: 0.45;
+    }
+
+    .empty-crew {
+      font-size: 14px;
+      opacity: 0.3;
+      font-style: italic;
+      padding: 8px 0;
+    }
+
+    /* ── Check-in CTA ── */
+    .checkin-btn {
+      width: 100%;
+      padding: 18px;
+      border-radius: 16px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    /* ── Timestamp ── */
+    .timestamp {
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-align: center;
+      margin-top: 12px;
+      opacity: 0.2;
+      text-transform: uppercase;
+    }
+
+    /* ── Token chips ── */
+    .tokens {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      width: 320px;
+    }
+    .token {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 11px;
+      color: #888;
+    }
+    .token-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+
+    /* ════════════════════════════════════
+       THEME 1 — Pre-dawn / Dark coastal
+    ════════════════════════════════════ */
+    .t1 .screen          { background: #0d1117; }
+    .t1 .break-name      { color: #8b9bb4; }
+    .t1 .dot.active      { background: #8b9bb4; }
+    .t1 .dot.inactive    { background: #8b9bb4; }
+    .t1 .verdict         { color: #e8edf5; }
+    .t1 .raw-toggle      { color: #8b9bb4; }
+    .t1 .divider         { background: #8b9bb4; }
+    .t1 .crew-label      { color: #8b9bb4; }
+    .t1 .member-name     { color: #dde4ef; }
+    .t1 .member-eta      { color: #8b9bb4; }
+    .t1 .status-dot      { background: #3ecf8e; }
+    .t1 .empty-crew      { color: #8b9bb4; }
+    .t1 .checkin-btn     { background: #1e6ef5; color: #fff; }
+    .t1 .timestamp       { color: #8b9bb4; }
+
+    /* ════════════════════════════════════
+       THEME 2 — Morning light / Warm neutral
+    ════════════════════════════════════ */
+    .t2 .screen          { background: #f5f0e8; }
+    .t2 .break-name      { color: #8a7e6e; }
+    .t2 .dot.active      { background: #1a3a5c; }
+    .t2 .dot.inactive    { background: #1a3a5c; }
+    .t2 .verdict         { color: #1a1a1a; }
+    .t2 .raw-toggle      { color: #8a7e6e; }
+    .t2 .divider         { background: #1a3a5c; }
+    .t2 .crew-label      { color: #8a7e6e; }
+    .t2 .member-name     { color: #1a1a1a; }
+    .t2 .member-eta      { color: #8a7e6e; }
+    .t2 .status-dot      { background: #2e8b57; }
+    .t2 .empty-crew      { color: #8a7e6e; }
+    .t2 .checkin-btn     { background: #1a3a5c; color: #f5f0e8; }
+    .t2 .timestamp       { color: #8a7e6e; }
+
+    /* ════════════════════════════════════
+       THEME 3 — Coastal minimal / Desaturated
+    ════════════════════════════════════ */
+    .t3 .screen          { background: #f0f2f5; }
+    .t3 .break-name      { color: #8892a0; }
+    .t3 .dot.active      { background: #2d3748; }
+    .t3 .dot.inactive    { background: #2d3748; }
+    .t3 .verdict         { color: #1a202c; }
+    .t3 .raw-toggle      { color: #8892a0; }
+    .t3 .divider         { background: #2d3748; }
+    .t3 .crew-label      { color: #8892a0; }
+    .t3 .member-name     { color: #1a202c; }
+    .t3 .member-eta      { color: #8892a0; }
+    .t3 .status-dot      { background: #38a169; }
+    .t3 .empty-crew      { color: #8892a0; }
+    .t3 .checkin-btn     { background: #2d3748; color: #f0f2f5; }
+    .t3 .timestamp       { color: #8892a0; }
+  </style>
+</head>
+<body>
+  <h1>Kooks — Visual Theme Exploration</h1>
+
+  <div class="themes">
+
+    <!-- ── THEME 1 ── -->
+    <div class="theme-col">
+      <div class="theme-label">Theme 1 — Pre-dawn</div>
+      <div class="phone t1">
+        <div class="screen">
+          <div class="break-name">The Point</div>
+          <div class="swipe-dots">
+            <div class="dot active"></div>
+            <div class="dot inactive"></div>
+            <div class="dot inactive"></div>
+          </div>
+          <div class="verdict">Clean waist-high sets, offshore glass — get out there</div>
+          <div class="raw-toggle">Raw data</div>
+          <div class="divider"></div>
+          <div class="crew-label">Crew</div>
+          <div class="crew-list">
+            <div class="crew-member">
+              <div class="status-dot"></div>
+              <div class="member-name">Sarah</div>
+              <div class="member-eta">6:00 am</div>
+            </div>
+            <div class="crew-member">
+              <div class="status-dot"></div>
+              <div class="member-name">Jess</div>
+              <div class="member-eta">6:30 am</div>
+            </div>
+          </div>
+          <button class="checkin-btn">I'm in</button>
+          <div class="timestamp">Updated 4 min ago</div>
+        </div>
+      </div>
+      <div class="tokens">
+        <div class="token"><div class="token-swatch" style="background:#0d1117"></div>Background</div>
+        <div class="token"><div class="token-swatch" style="background:#e8edf5"></div>Verdict</div>
+        <div class="token"><div class="token-swatch" style="background:#8b9bb4"></div>Secondary</div>
+        <div class="token"><div class="token-swatch" style="background:#1e6ef5"></div>Action</div>
+        <div class="token"><div class="token-swatch" style="background:#3ecf8e"></div>Present</div>
+      </div>
+    </div>
+
+    <!-- ── THEME 2 ── -->
+    <div class="theme-col">
+      <div class="theme-label">Theme 2 — Morning light</div>
+      <div class="phone t2">
+        <div class="screen">
+          <div class="break-name">The Point</div>
+          <div class="swipe-dots">
+            <div class="dot active"></div>
+            <div class="dot inactive"></div>
+            <div class="dot inactive"></div>
+          </div>
+          <div class="verdict">Clean waist-high sets, offshore glass — get out there</div>
+          <div class="raw-toggle">Raw data</div>
+          <div class="divider"></div>
+          <div class="crew-label">Crew</div>
+          <div class="crew-list">
+            <div class="crew-member">
+              <div class="status-dot"></div>
+              <div class="member-name">Sarah</div>
+              <div class="member-eta">6:00 am</div>
+            </div>
+            <div class="crew-member">
+              <div class="status-dot"></div>
+              <div class="member-name">Jess</div>
+              <div class="member-eta">6:30 am</div>
+            </div>
+          </div>
+          <button class="checkin-btn">I'm in</button>
+          <div class="timestamp">Updated 4 min ago</div>
+        </div>
+      </div>
+      <div class="tokens">
+        <div class="token"><div class="token-swatch" style="background:#f5f0e8;border:1px solid #ddd"></div>Background</div>
+        <div class="token"><div class="token-swatch" style="background:#1a1a1a"></div>Verdict</div>
+        <div class="token"><div class="token-swatch" style="background:#8a7e6e"></div>Secondary</div>
+        <div class="token"><div class="token-swatch" style="background:#1a3a5c"></div>Action</div>
+        <div class="token"><div class="token-swatch" style="background:#2e8b57"></div>Present</div>
+      </div>
+    </div>
+
+    <!-- ── THEME 3 ── -->
+    <div class="theme-col">
+      <div class="theme-label">Theme 3 — Coastal minimal</div>
+      <div class="phone t3">
+        <div class="screen">
+          <div class="break-name">The Point</div>
+          <div class="swipe-dots">
+            <div class="dot active"></div>
+            <div class="dot inactive"></div>
+            <div class="dot inactive"></div>
+          </div>
+          <div class="verdict">Clean waist-high sets, offshore glass — get out there</div>
+          <div class="raw-toggle">Raw data</div>
+          <div class="divider"></div>
+          <div class="crew-label">Crew</div>
+          <div class="crew-list">
+            <div class="crew-member">
+              <div class="status-dot"></div>
+              <div class="member-name">Sarah</div>
+              <div class="member-eta">6:00 am</div>
+            </div>
+            <div class="crew-member">
+              <div class="status-dot"></div>
+              <div class="member-name">Jess</div>
+              <div class="member-eta">6:30 am</div>
+            </div>
+          </div>
+          <button class="checkin-btn">I'm in</button>
+          <div class="timestamp">Updated 4 min ago</div>
+        </div>
+      </div>
+      <div class="tokens">
+        <div class="token"><div class="token-swatch" style="background:#f0f2f5;border:1px solid #ddd"></div>Background</div>
+        <div class="token"><div class="token-swatch" style="background:#1a202c"></div>Verdict</div>
+        <div class="token"><div class="token-swatch" style="background:#8892a0"></div>Secondary</div>
+        <div class="token"><div class="token-swatch" style="background:#2d3748"></div>Action</div>
+        <div class="token"><div class="token-swatch" style="background:#38a169"></div>Present</div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

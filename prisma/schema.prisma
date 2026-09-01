@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid()) @map("id")
+  displayName String   @map("display_name")
+  inviteToken String   @unique @default(cuid()) @map("invite_token")
+  // Deliberately not a relation: a FK to Break would create a User <-> Break cycle.
+  // break.delete must null this out for any user pointing at the deleted Break.
+  homeBreakId String?  @map("home_break_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  sessions          Session[]
+  pushSubscriptions PushSubscription[]
+  checkIns          CheckIn[]
+  createdBreaks     Break[]            @relation("BreakCreator")
+  savedBreaks       UserSavedBreak[]
+  crewAsUser        CrewMember[]       @relation("CrewUser")
+  crewAsFriend      CrewMember[]       @relation("CrewFriend")
+  notificationPrefs NotificationPref?
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid()) @map("id")
+  token     String   @unique @default(cuid()) @map("token")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Break {
+  id          String   @id @default(cuid()) @map("id")
+  label       String   @map("label")
+  lat         Float    @map("lat")
+  lng         Float    @map("lng")
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Conditions cache — written by conditions-jobs, read by conditionsRouter. No separate cache layer.
+  conditionsVerdict String? @map("conditions_verdict")
+  rawData           Json?   @map("raw_data")
+  // When we last polled SwellCloud (FR-7: no older than 30 min).
+  conditionsUpdatedAt DateTime? @map("conditions_updated_at")
+  // The SwellCloud model-run timestamp the cached data came from. The LLM verdict is
+  // regenerated only when this changes (FR-8: 4x daily), not on every 30-min poll.
+  conditionsModelRunAt DateTime? @map("conditions_model_run_at")
+
+  createdBy User             @relation("BreakCreator", fields: [createdById], references: [id])
+  savedBy   UserSavedBreak[]
+  checkIns  CheckIn[]
+
+  @@index([createdById])
+  @@map("breaks")
+}
+
+model UserSavedBreak {
+  userId    String @map("user_id")
+  breakId   String @map("break_id")
+  sortOrder Int    @default(0) @map("sort_order")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  break Break @relation(fields: [breakId], references: [id], onDelete: Cascade)
+
+  @@id([userId, breakId])
+  @@index([breakId])
+  @@map("user_saved_breaks")
+}
+
+model CrewMember {
+  userId   String @map("user_id")
+  friendId String @map("friend_id")
+
+  user   User @relation("CrewUser", fields: [userId], references: [id], onDelete: Cascade)
+  friend User @relation("CrewFriend", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@id([userId, friendId])
+  @@index([friendId])
+  @@map("crew_members")
+}
+
+model CheckIn {
+  // @unique on userId enforces FR-10: one active check-in per user at a time.
+  id        String   @id @default(cuid()) @map("id")
+  userId    String   @unique @map("user_id")
+  breakId   String   @map("break_id")
+  eta       DateTime @map("eta")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  break Break @relation(fields: [breakId], references: [id], onDelete: Cascade)
+
+  @@index([breakId])
+  @@index([eta])
+  @@map("check_ins")
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid()) @map("id")
+  userId    String   @map("user_id")
+  endpoint  String   @unique @map("endpoint")
+  p256dh    String   @map("p256dh")
+  auth      String   @map("auth")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+model NotificationPref {
+  userId        String  @id @map("user_id")
+  friendCheckIn Boolean @default(true) @map("friend_check_in")
+  nightBefore   Boolean @default(true) @map("night_before")
+  dawnPatrol    Boolean @default(true) @map("dawn_patrol")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_prefs")
+}
