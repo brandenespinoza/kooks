@@ -32,7 +32,7 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body className="bg-bg">
         <TRPCReactProvider>
-          <div className="max-w-[430px] mx-auto min-h-screen bg-bg pt-safe pb-safe">
+          <div className="mx-auto flex min-h-screen max-w-[430px] flex-col bg-bg">
             {children}
           </div>
         </TRPCReactProvider>

@@ -24,7 +24,7 @@ export function OnboardingForm({
   const showError = attempted && isEmpty;
 
   return (
-    <main className="flex min-h-screen flex-col justify-center px-7">
+    <main className="flex flex-1 flex-col justify-center px-7 pt-safe pb-safe">
       <p className="text-[10px] font-normal uppercase tracking-[0.14em] text-text-secondary">
         You&rsquo;ve been invited
       </p>

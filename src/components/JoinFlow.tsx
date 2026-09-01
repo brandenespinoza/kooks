@@ -52,7 +52,7 @@ export function JoinFlow({
 
   if (isAuthenticated) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-3 px-7 text-center">
+      <main className="flex flex-1 flex-col items-center justify-center gap-3 px-7 pt-safe pb-safe text-center">
         <p
           className="text-[16px] font-bold text-text-primary"
           aria-live="polite"

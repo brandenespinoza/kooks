@@ -2,7 +2,7 @@
 
 Single source of truth for story status. Individual story files carry their own `Status:` line; **this file is the index that keeps them honest.** Story 1.2 sat at `ready-for-dev` for months while fully implemented because nothing reconciled the two — that is what this file exists to prevent.
 
-Last reconciled: **2026-08-31** (Story 1.3 complete; Epic 1 closed).
+Last reconciled: **2026-08-31** (Story 2.1 complete).
 
 ## Status legend
 
@@ -18,15 +18,15 @@ Last reconciled: **2026-08-31** (Story 1.3 complete; Epic 1 closed).
 | Story | Status | FRs | Notes |
 |---|---|---|---|
 | 1.1 Project Scaffold & Infrastructure | `done` | — | AR-1–14. See story file for review findings. |
-| 1.2 App Shell & Design System | `done` | — | UX-DR2/3/10/13. Reconciled 2026-08-31; three documented divergences. Device-level safe-area check still outstanding — carried into 2.1. |
+| 1.2 App Shell & Design System | `done` | — | UX-DR2/3/10/13. Reconciled 2026-08-31. **AC 2 (Inter) was silently unmet until Story 2.1** — a circular `--font-sans` meant every page rendered in Times. Fixed in 2.1. Device/viewport check completed in 2.1. |
 | 1.3 Invite Link Join & Account Creation | `done` | FR-22, FR-23 | Landed 2026-08-31. Absorbed the `CrewMember` pair and real `assertCrewMember` from Epic 5. **Epic 1 complete.** |
 
 ## Epic 2 — Breaks & Navigation
 
 | Story | Status | FRs | Notes |
 |---|---|---|---|
-| 2.1 Break Screen Shell with D3 Layout | `ready-for-dev` | — | **Next up.** UX-DR1/8/9. First real UI — do the deferred device/viewport validation here, and replace the `src/app/page.tsx` placeholder. |
-| 2.2 Break Creation & Management | `backlog` | FR-1, 3, 4a | No migration task (schema landed 2026-08-31). Leaflet needs `ssr: false`. `break.delete` must null dependent `homeBreakId`. |
+| 2.1 Break Screen Shell with D3 Layout | `done` | — | Landed 2026-08-31. UX-DR1/8/9 + early UX-DR6. Verified in a real browser at both viewports; caught and fixed the Inter font bug carried since 1.2. |
+| 2.2 Break Creation & Management | `ready-for-dev` | FR-1, 3, 4a | **Next up.** No migration task. Leaflet needs `ssr: false`. `break.delete` must null dependent `homeBreakId`. Wire the existing `EmptyBreaksState` CTA to the pin-drop flow. |
 | 2.3 Swipe Navigation & Saving Crew Breaks | `backlog` | FR-2, 4b | |
 
 ## Epic 3 — Conditions
@@ -41,7 +41,7 @@ Last reconciled: **2026-08-31** (Story 1.3 complete; Epic 1 closed).
 
 | Story | Status | FRs | Notes |
 |---|---|---|---|
-| 4.1 Check-In Creation & CrewZone UI | `backlog` | FR-10 | No migration task. |
+| 4.1 Check-In Creation & CrewZone UI | `backlog` | FR-10 | No migration task. `EmptyCrewState` (UX-DR6) already built in 2.1 — reuse it. Adds `CheckInCTA` between the crew list and timestamp, the gap 2.1 deliberately left. |
 | 4.2 Real-Time Presence via SSE | `backlog` | FR-11 (partial) | Needs `export const dynamic = 'force-dynamic'` (rule 11). |
 | 4.3 Edit, Remove & Auto-Expiry | `backlog` | FR-11, 12, 13 | Expiry job depends on pg-boss from 3.1. |
 
@@ -82,3 +82,5 @@ epics.md Story 1.3 specified a stub that throws `FORBIDDEN` unconditionally unti
 **5. Design tokens are Tailwind utilities, not bracket syntax.** Write `bg-action` / `text-text-secondary`, never `bg-[--action]`. The latter compiles to invalid CSS that browsers discard silently. See `CLAUDE.md` for the full token list.
 
 **6. ~~Deploy is manual-dispatch only.~~ RESOLVED 2026-08-31.** `deploy.yml` was gated during the replan and the `push: branches: [main]` trigger was restored when Story 1.3 landed. `workflow_dispatch` is retained for manual runs. **The next push to `main` will deploy** — it requires the `VPS_HOST`, `VPS_USER`, and `VPS_SSH_KEY` repository secrets.
+
+**7. Design tokens fail WCAG AA on parchment (NFR-9) — decision needed.** Measured during Story 2.1: `--text-secondary` 3.50:1, `--present` 3.74:1, `--stale` 1.71:1 against `--bg`, all below the 4.5:1 required for the 10–16px text they are used on. The UX spec asserts these pass; they do not. Minimum darkening that preserves hue and saturation: `--text-secondary` -> `#776c5f`, `--present` -> `#297c4e`, `--stale` -> `#796c59`. Note `--stale` at AA is no longer visually "muted", which fights its purpose — the alternative is to enlarge the timestamp instead. This is a one-line change per token in `globals.css` because everything uses the token utilities. Resolve before the Story 6.4 accessibility audit, not during it.

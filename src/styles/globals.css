@@ -30,8 +30,11 @@
 }
 
 @theme inline {
+  /* NOTE: do not add `--font-sans: var(--font-sans)` here. shadcn's base-nova registry
+     ships that line, but it is self-referential and resolves to an empty string, which
+     silently drops the whole font stack and lets the browser fall back to serif.
+     `--font-sans` is defined once in the plain `@theme` block above. */
   --font-heading: var(--font-sans);
-  --font-sans: var(--font-sans);
 
   /* ── Morning Light tokens as first-class utilities ───────── */
   --color-bg: var(--bg);

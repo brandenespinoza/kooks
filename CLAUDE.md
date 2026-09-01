@@ -73,7 +73,13 @@ This project is driven by BMad workflows; the specs are the source of truth for 
 
 **Epic 1 is complete.** Auth works end to end: `src/server/auth/` (session helpers + real `assertCrewMember`), `crewRouter` (`joinViaInvite`, `me`), `src/middleware.ts`, the `/join/[inviteToken]` and `/join-required` routes, and `prisma/seed.ts`. `protectedProcedure` and the `{ db, user, session }` context exist in `src/server/api/trpc.ts`.
 
-Still absent: `src/server/{jobs,push}/`, every router except `crew`, and `instrumentation.ts` is still a stub (pg-boss lands in Story 3.1). `src/app/page.tsx` is a placeholder that only proves the session resolves — Epic 2 replaces it with the Break swipe stack.
+**Story 2.1 is done:** `/` renders the D3 Break screen (`BreakScreen` -> `VerdictBand` + `CrewZone`) with skeletons, `SwipeDots`, and empty states. `BreakScreen` is the only component in that subtree that calls tRPC — everything below it is presentational.
+
+Still absent: `src/server/{jobs,push}/`, every router except `crew` and `break`, and `instrumentation.ts` is still a stub (pg-boss lands in Story 3.1). No `CheckInCTA` (Epic 4), no swipe gesture (Story 2.3), no Break creation (Story 2.2).
+
+**Safe-area insets live on pages and zones, not the shell.** The `layout.tsx` wrapper is a `flex flex-col` with no `pt-safe`/`pb-safe`, so the navy `VerdictBand` can paint behind the iOS status bar (UX-DR1). Any new top-level page must declare its own `pt-safe pb-safe`.
+
+**Known accessibility debt:** `--text-secondary`, `--present`, and `--stale` fail WCAG AA on parchment. Measured values and candidate fixes are in deferred-work.md; do not assume the palette is compliant.
 
 **`assertCrewMember(ctx, breakId)` is real, not a stub** — call it at the top of anything touching break-specific data (rule 2). It allows the Break's creator, anyone sharing a `CrewMember` row with the creator, and anyone who has the Break in their `UserSavedBreak`; throws `FORBIDDEN` otherwise.
 
