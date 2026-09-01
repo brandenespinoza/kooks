@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { TRPCError } from "@trpc/server";
 
 import { api } from "~/trpc/server";
-import { BreakScreen } from "~/components/BreakScreen";
+import { BreakSwipeStack } from "~/components/BreakSwipeStack";
 
 export const dynamic = "force-dynamic";
 
@@ -21,5 +21,5 @@ export default async function Home() {
     throw error;
   }
 
-  return <BreakScreen />;
+  return <BreakSwipeStack />;
 }

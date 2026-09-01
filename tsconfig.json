@@ -40,6 +40,8 @@
   ],
   "exclude": [
     "node_modules",
+    "src/app/sw.ts",
+    "public",
     "generated",
     "_bmad",
     "_bmad-output",

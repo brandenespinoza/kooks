@@ -4,6 +4,7 @@ import { type PrismaClient } from "@prisma/client";
 
 import { db } from "~/server/db";
 import { createSession } from "~/server/auth/session";
+import { emitter, type PresenceEvent } from "~/server/events";
 
 export type JoinResult =
   | { ok: true; createdAccount: boolean; connectedTo: string | null; token: string | null }
@@ -18,13 +19,25 @@ export type JoinResult =
 async function connectCrew(tx: PrismaClient, userId: string, friendId: string) {
   if (userId === friendId) return;
 
-  await tx.crewMember.createMany({
+  const { count } = await tx.crewMember.createMany({
     data: [
       { userId, friendId },
       { userId: friendId, friendId: userId },
     ],
     skipDuplicates: true,
   });
+
+  // Only when the pair is genuinely new — re-tapping a link should not wake every open
+  // screen. Both parties' streams widen their visible set on this and refetch, so a new
+  // crew member's Breaks and check-ins appear without a refresh (FR-16).
+  if (count > 0) {
+    const event: PresenceEvent = {
+      type: "crew.joined",
+      breakId: null,
+      payload: { userIds: [userId, friendId] },
+    };
+    emitter.emit(event.type, event);
+  }
 }
 
 /**

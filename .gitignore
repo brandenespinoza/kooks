@@ -55,3 +55,9 @@ yarn-error.log*
 /.agents
 .claude/projects
 .claude/settings.local.json
+
+# serwist build output (generated into public/ by `next build`)
+/public/sw.js
+/public/sw.js.map
+/public/swe-worker-*.js
+/public/workbox-*.js

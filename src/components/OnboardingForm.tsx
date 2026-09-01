@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { NotificationPrompt } from "~/components/NotificationPrompt";
 
 /**
  * Display name only — no email, phone, password, or verification (FR-23, AC 2).
@@ -85,6 +86,9 @@ export function OnboardingForm({
       <p className="mt-6 text-[13px] text-text-secondary">
         No email, no password. Just a name.
       </p>
+
+      {/* NFR-5: the iOS install requirement, stated once, where someone is already reading. */}
+      <NotificationPrompt />
     </main>
   );
 }

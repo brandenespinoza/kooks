@@ -1,6 +1,9 @@
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 import { crewRouter } from "~/server/api/routers/crew-router";
 import { breakRouter } from "~/server/api/routers/break-router";
+import { conditionsRouter } from "~/server/api/routers/conditions-router";
+import { checkInRouter } from "~/server/api/routers/check-in-router";
+import { notificationRouter } from "~/server/api/routers/notification-router";
 
 /**
  * Primary tRPC router for Kooks.
@@ -9,6 +12,9 @@ import { breakRouter } from "~/server/api/routers/break-router";
 export const appRouter = createTRPCRouter({
   crew: crewRouter,
   break: breakRouter,
+  conditions: conditionsRouter,
+  checkIn: checkInRouter,
+  notification: notificationRouter,
 });
 
 export type AppRouter = typeof appRouter;

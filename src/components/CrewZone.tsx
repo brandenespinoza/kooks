@@ -1,6 +1,12 @@
-import { Plus, SlidersHorizontal } from "lucide-react";
+import Link from "next/link";
+import { Plus, Settings } from "lucide-react";
 
+import type { SavedBreak } from "~/components/BreakSwipeStack";
+import { CheckInCTA } from "~/components/CheckInCTA";
+import { CrewMemberRow } from "~/components/CrewMemberRow";
 import { EmptyCrewState } from "~/components/EmptyCrewState";
+
+const STALE_AFTER_MS = 30 * 60 * 1000;
 
 /**
  * Parchment bottom zone of the D3 Verdict Band layout (UX-DR1).
@@ -14,14 +20,25 @@ import { EmptyCrewState } from "~/components/EmptyCrewState";
 export function CrewZone({
   isLoading,
   updatedAt,
-  onManageBreaks,
+  checkIns,
+  onCheckIn,
   onAddBreak,
 }: {
   isLoading: boolean;
   updatedAt: Date | null;
-  onManageBreaks?: () => void;
+  checkIns: SavedBreak["checkIns"];
+  onCheckIn?: () => void;
   onAddBreak?: () => void;
 }) {
+  // FR-7: the poll refreshes every 30 minutes, so anything older than that means a poll
+  // was missed — the timestamp drops to `--stale` to say so, without an error state.
+  // The threshold matches POLL_CONDITIONS_CRON in `conditions-jobs.ts` on purpose; it is
+  // duplicated rather than imported because that module is server-only and this is not.
+  const myEta = checkIns.find((checkIn) => checkIn.isMe)?.eta ?? null;
+
+  const isFresh =
+    updatedAt !== null && Date.now() - updatedAt.getTime() <= STALE_AFTER_MS;
+
   return (
     <section className="flex flex-1 flex-col px-7 pt-8 pb-[max(2.25rem,calc(env(safe-area-inset-bottom)+0.75rem))]">
       <div className="flex items-center justify-between">
@@ -39,27 +56,50 @@ export function CrewZone({
               <Plus className="size-4 text-text-secondary" aria-hidden="true" />
             </button>
           )}
-          {onManageBreaks && (
-            <button
-              type="button"
-              onClick={onManageBreaks}
-              aria-label="Manage your breaks"
-              className="grid size-12 place-items-center rounded-full"
-            >
-              <SlidersHorizontal
-                className="size-4 text-text-secondary"
-                aria-hidden="true"
-              />
-            </button>
-          )}
+          {/* Everything else — managing breaks, the crew, the invite link — lives on the
+              Settings screen as of Story 5.3, rather than in two drawers hanging off this
+              header. */}
+          <Link
+            href="/settings"
+            aria-label="Settings"
+            className="grid size-12 place-items-center rounded-full"
+          >
+            <Settings className="size-4 text-text-secondary" aria-hidden="true" />
+          </Link>
         </div>
       </div>
 
       <div className="mt-3 flex-1">
-        {isLoading ? <CrewSkeleton /> : <EmptyCrewState />}
+        {isLoading ? (
+          <CrewSkeleton />
+        ) : checkIns.length === 0 ? (
+          <EmptyCrewState />
+        ) : (
+          <ul>
+            {checkIns.map((checkIn) => (
+              <CrewMemberRow
+                key={checkIn.id}
+                name={checkIn.displayName}
+                eta={checkIn.eta}
+                isMe={checkIn.isMe}
+              />
+            ))}
+          </ul>
+        )}
       </div>
 
-      <p className="text-center text-[10px] font-normal uppercase text-stale">
+      {/* The gap Story 2.1 deliberately left: between the crew list and the timestamp. */}
+      {!isLoading && onCheckIn && (
+        <div className="mb-5">
+          <CheckInCTA eta={myEta} onOpen={onCheckIn} />
+        </div>
+      )}
+
+      <p
+        className={`text-center text-[10px] font-normal uppercase ${
+          isFresh ? "text-text-secondary" : "text-stale"
+        }`}
+      >
         {isLoading
           ? " "
           : updatedAt

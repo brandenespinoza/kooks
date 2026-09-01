@@ -1,6 +1,12 @@
 /**
  * Creates the primary user so the very first invite link works on a fresh deployment.
  *
+ * **Plain `.mjs`, deliberately.** This runs as `node prisma/seed.mjs` from the container's
+ * start command, alongside `prisma migrate deploy` — so it must not need `tsx`, a
+ * devDependency that has no business on the production start path. Without this running at
+ * boot, a fresh deploy has a schema, zero users, and no way in: `/` bounces to
+ * `/join-required` and `/join/<SEED_INVITE_TOKEN>` 404s because nobody holds that token.
+ *
  * Instantiates PrismaClient directly rather than importing `~/server/db`. Enforcement rule 3
  * forbids that in application code, but this script runs outside the Next.js runtime where
  * neither the `~` path alias nor `~/env` validation are available. Documented exception —

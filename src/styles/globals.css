@@ -91,13 +91,13 @@
   /* ── Morning Light design tokens ─────────────────────────── */
   --bg: #f5f0e8;
   --text-primary: #1a1a1a;
-  --text-secondary: #8a7e6e;
+  --text-secondary: #71675a;
   --action: #1a3a5c;
   --action-fg: #f5f0e8;
-  --present: #2e8b57;
+  --present: #27764a;
   --divider: rgba(26, 58, 92, 0.10);
   --surface: #ede8df;
-  --stale: #c2b9ac;
+  --stale: #8b601c;
 
   /* ── shadcn semantic vars → Morning Light ────────────────── */
   --background: #f5f0e8;
@@ -114,7 +114,7 @@
   --muted-foreground: #8a7e6e;
   --accent: #ede8df;
   --accent-foreground: #1a1a1a;
-  --destructive: #dc2626;
+  --destructive: #cc2121;
   --border: rgba(26, 58, 92, 0.10);
   --input: rgba(26, 58, 92, 0.10);
   --ring: #1a3a5c;
@@ -158,6 +158,25 @@
 }
 
 @layer utilities {
+  /* Horizontal Break stack (UX-DR9). Scroll-snap does the paging; the scrollbar is hidden
+     because the panels are full-viewport and the SwipeDots already show the position.
+
+     UX-DR12: `scroll-behavior: smooth` is what makes a programmatic jump between Breaks
+     animate, so reduced motion has to turn it off here. The global reduced-motion block
+     below only clamps animation/transition durations — it does not touch scroll-behavior. */
+  .swipe-stack {
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+  }
+  .swipe-stack::-webkit-scrollbar {
+    display: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .swipe-stack {
+      scroll-behavior: auto;
+    }
+  }
+
   /* iOS safe area insets */
   .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
   .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }

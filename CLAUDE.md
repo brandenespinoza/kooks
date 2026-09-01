@@ -69,13 +69,243 @@ This project is driven by BMad workflows; the specs are the source of truth for 
 - `_bmad-output/planning-artifacts/ux-design-specification.md` — component-level design spec.
 - `_bmad-output/implementation-artifacts/sprint-plan.md` — **status index across all 19 stories, and the cross-cutting replan corrections. Read this first.** Individual story files carry their own `Status:`, but this file is what keeps them honest.
 - `_bmad-output/implementation-artifacts/` — one file per story with `Status:`, tasks, and dev notes. Epic 1 (1.1–1.3) is done; **Story 2.1 is next** and has no story file yet — generate it with `bmad-create-story`.
-- `_bmad-output/implementation-artifacts/deferred-work.md` — accepted V1 shortcuts. Check here before "fixing" something that looks wrong (hardcoded compose password, no session expiry, no sign-out, 1.18GB Docker image, `pino` not installed).
+- `_bmad-output/implementation-artifacts/deferred-work.md` — accepted V1 shortcuts. Check here before "fixing" something that looks wrong (hardcoded compose password, no session expiry, no sign-out, 1.18GB Docker image, unverified SwellCloud response shape).
 
 **Epic 1 is complete.** Auth works end to end: `src/server/auth/` (session helpers + real `assertCrewMember`), `crewRouter` (`joinViaInvite`, `me`), `src/middleware.ts`, the `/join/[inviteToken]` and `/join-required` routes, and `prisma/seed.ts`. `protectedProcedure` and the `{ db, user, session }` context exist in `src/server/api/trpc.ts`.
 
-**Stories 2.1–2.2 are done:** `/` renders the D3 Break screen (`BreakScreen` -> `VerdictBand` + `CrewZone`) with skeletons, `SwipeDots`, empty states, Leaflet pin-drop Break creation, Home Break selection, and delete. `BreakScreen` is the only component in that subtree that calls tRPC — everything below it is presentational.
+**Epic 2 is complete (Stories 2.1–2.3):** `/` renders `BreakSwipeStack` -> one `BreakScreen` (`VerdictBand` + `CrewZone`) per saved Break, with skeletons, `SwipeDots`, empty states, Leaflet pin-drop Break creation, Home Break selection, delete, horizontal swipe navigation, and save/unsave of Breaks a crew member created. **`BreakSwipeStack` is the only component in that subtree that calls tRPC** — `BreakScreen` and everything below it is presentational. (architecture.md has each `BreakScreen` fetching its own data; that would be N queries for one list, so the single-caller rule moved up a level instead.)
 
-Still absent: `src/server/{jobs,push}/`, every router except `crew` and `break`, and `instrumentation.ts` is still a stub (pg-boss lands in Story 3.1). No `CheckInCTA` (Epic 4), no swipe gesture (Story 2.3).
+**Swipe is native CSS scroll-snap**, not a gesture library — `overflow-x-auto snap-x snap-mandatory` on the stack, one full-width panel per Break, and `activeIndex` derived from `scrollLeft / clientWidth` in the scroll handler. The `.swipe-stack` utility in `globals.css` hides the scrollbar and drops `scroll-behavior: smooth` under `prefers-reduced-motion` (the global reduced-motion block only clamps animation/transition durations — it does not touch `scroll-behavior`). The stack is `tabIndex={0}` with Arrow Left/Right paging, because a scrollable region has to be keyboard-reachable; the dots stay decorative.
+
+**Story 3.1 is done — pg-boss is live.** `src/instrumentation.ts` calls `startJobs()` from
+`src/server/jobs/index.ts`, which owns the single `PgBoss` and registers the `poll-conditions` cron
+(`*/30 * * * *`) defined in `src/server/jobs/conditions-jobs.ts`. Later stories add a line to
+`registerJobs` — never `new PgBoss()`. `src/lib/swellcloud.ts` is the server-only API client and
+`conditionsRouter.getForBreak` reads the cache off the `Break` row (nothing calls it yet; Story 3.3's
+`RawDataPanel` will, lazily). `pino` is installed — `src/server/logger.ts` is the one instance, for job
+code; React and tRPC still use `console`.
+
+Three things about that wiring that are load-bearing:
+
+- **The `await import("~/server/jobs")` must stay *inside* the `if (process.env.NEXT_RUNTIME === "nodejs")` block** in `instrumentation.ts`. Next compiles that file for the Edge runtime too, and an early-`return` guard does not stop webpack from pulling `pg` into the Edge bundle — the build fails on `Can't resolve 'fs'`.
+- **pg-boss v12 requires `createQueue()` before `schedule()`/`work()`** or `send` throws `Queue X does not exist`. Work handlers receive a **batch** (`Job<T>[]`), and `PgBoss` is a named export, not a default one.
+- **`src/lib/swellcloud.ts` encodes an *assumed* SwellCloud response shape** — no live key existed when it was written. A mismatch throws `SwellCloudError`, the poll logs it and leaves the last good row alone, so a wrong guess degrades to "conditions never populate", not to garbage on screen. Reconcile it against a real response before assuming polling is broken.
+
+`poll-conditions` deliberately does **not** write `Break.conditionsModelRunAt` — Story 3.2 gates verdict regeneration on that column changing, and writing it here would mean the verdict never regenerates.
+
+**Story 3.2 is done.** `src/lib/openai.ts` generates the verdict with `gpt-5.4-nano` (that id is in the
+installed SDK's own `ResponsesModel` union) via the Responses API — no `temperature`, and
+`max_output_tokens: 200` because reasoning tokens share that budget and a tight cap returns an empty
+string. The ten-word ceiling is enforced in code, not just asked for in the prompt. The poll regenerates
+only when the model run changes; when SwellCloud omits `modelRunAt` the clock is bucketed into 6-hour
+windows so FR-8's 4x-daily ceiling holds either way. A failed LLM call writes `conditionsVerdict = null`
+(AC-mandated) but deliberately does **not** advance `conditionsModelRunAt`, so the next poll retries in
+30 minutes. `break.list` now carries `safeParse`d `rawData` so `VerdictBand` can render the numbers when
+the verdict is null — fetching per-panel would break the single-caller rule.
+
+**SwellCloud is down — that, and only that, is why the Break screen has no conditions.**
+`api.swellcloud.net` resolves but never completes a TCP connection, so **no poll has ever succeeded**
+and `SWELLCLOUD_API_KEY` is still the literal string `placeholder`. Owner's call on 2026-09-01: a
+different provider will probably be needed, **tabled for now**. Do not go hunting for a bug in the poll,
+and do not swap in another provider as a side quest — it is a decision, and the swap is confined to
+`src/lib/swellcloud.ts` when it is made (Open-Meteo Marine is the leading candidate: no key, all five
+FR-6 fields).
+
+**Conditions run on mock data for now (`CONDITIONS_SOURCE=mock` in `.env`).** `fetchConditions` returns
+deterministic synthetic values with a real 6-hour `modelRunAt`, so the poll, the gate and the verdict all
+exercise properly. It **defaults to `swellcloud`** — never set it to `mock` in production, where invented
+numbers on a go/no-go screen could put someone in the water on a lie. The sweep warns on every run while
+it is on. Adding it touched `src/env.js`, `.env.example` and the README, per the usual rule.
+
+**Epic 3 is now verified end to end.** First sweep `regenerated:2`, second sweep on the same model run
+`refreshed:2, regenerated:0` — the FR-8 gate holds. Two defects were found and fixed in the process: the
+model invented a unit ("1.9ft" on data whose units are unknown) and the ten-word ceiling cut mid-phrase.
+`enforceWordCeiling` now backs off to a clause boundary and is exported so it can be exercised directly.
+
+**`OPENAI_API_KEY` is real and the verdict path is proven.** `generateVerdict` was run against the live
+API on 2026-09-01: `gpt-5.4-nano` returned a 9-word verdict in ~1.8s, and the failure path wraps as
+`VerdictGenerationError` with the cause intact. The model-run gate is still unexercised, because it
+needs a successful poll. The real `.env` lives at `/opt/kooks/.env` on the VPS and is invisible to CI.
+
+**Story 3.3 is done — Epic 3 is complete.** `VerdictBand` now carries a "Raw data" disclosure toggle
+(`aria-expanded` + `aria-controls`, `RawDataPanel` in two columns) and a `WebcamLink` row. The toggle is
+hidden when the verdict is null, because the band is already showing the numbers inline in that state.
+`src/lib/webcams.ts` parses `WEBCAM_URLS_JSON` once per process, matches labels case-insensitively,
+accepts only `http(s)` URLs, and degrades to an empty map with a pino warning on a wrong-shaped value;
+`break.list` resolves one `webcamUrl` per Break so the curator map never reaches the browser.
+`VerdictBand` is a client component now (it owns the disclosure state) but still makes no tRPC call.
+
+`conditions.getForBreak` is **kept deliberately with no caller** — 3.1's AC requires it and `break.list`
+already carries the data. Do not "fix" it by wiring it into the swipe stack; that would be N round trips
+for data already on screen.
+
+**Story 4.1 is done — check-in works.** `checkIn.create` is an **upsert on `userId`**, not a create:
+`CheckIn.userId` is `@unique` (FR-10's one-at-a-time rule is a schema invariant), so confirming from
+another Break *moves* the check-in and emits `checkIn.removed` to the Break you left plus
+`checkIn.created` to the new one. Editing the time in place emits `checkIn.updated`. Nothing listens
+until Story 4.2 — the SSE route only has to listen and invalidate `break.list`.
+
+The crew list rides on `break.list` alongside conditions and webcams, with `isMe` computed server-side.
+`ETAPicker` is native scroll-snap (same call as the swipe stack), a `radiogroup` with a roving tabindex,
+15-minute slots 5:00am–10:00am, and slots **roll forward to tomorrow** once the time has passed — 8pm is
+exactly when someone plans a dawn patrol. The drawer warns before moving an existing check-in.
+
+**Story 4.2 is done — presence is live.** `src/app/api/presence/stream/route.ts` is the SSE endpoint
+(`force-dynamic`, `runtime = "nodejs"` because `EventEmitter` has no Edge implementation). Two
+deliberate deviations from the AC, both documented in the story file: **one connection per client**
+rather than one per `BreakScreen` (every panel is mounted at once; a browser allows ~6 per origin), and
+**crew-scoped now** via `listVisibleBreakIds` rather than deferring to Epic 5, since `assertCrewMember`
+has been real since 1.3.
+
+Three things in that route are load-bearing and should not be "simplified":
+
+- **`X-Accel-Buffering: no`** — Nginx buffers proxied responses, so without it NFR-2 passes locally and
+  fails behind Nginx Proxy Manager. The 25s heartbeat comment is for the same proxy.
+- **Cleanup is wired to both `ReadableStream.cancel` and the request's abort signal**, and is
+  idempotent. `cancel` does not fire on every disconnect path.
+- **A `break.created` miss re-resolves the visible set.** The set is built at connect, so a Break
+  created afterwards can never be in it — without this, `break.created` reaches nobody, not even its
+  creator.
+
+A frame carries `{type, breakId}` and nothing else: SSE is the signal, `break.list` is the data. Keep it
+that way, or the stream becomes a second read path with weaker authorization.
+
+**Story 4.3 is done — Epic 4 is complete.** `checkIn.update` and `checkIn.remove` join `create`, and
+`src/server/jobs/check-in-jobs.ts` registers `checkin-expiry` (`*/5 * * * *`) in `registerJobs`.
+
+**`update` is deliberately not folded into `create`'s upsert.** It *refuses to create*: editing is
+reached from the "You're in at … · Edit" CTA, and a missing row there means the check-in expired or was
+removed elsewhere — recreating it would put someone back on a beach they had left. `create` still owns
+the move-between-Breaks case. Do not "simplify" the two into one.
+
+**The expiry sweep reads before it deletes**, because the SSE events need the `breakId`s that are about
+to vanish, and then deletes by id rather than re-running the time filter. Verified at the boundary
+(2h01m deleted, 1h59m kept) and end to end: a job enqueued from another process was consumed in-process
+and the frame reached an open stream.
+
+**Story 5.1 is done.** `crew.getInviteLink` returns a **path** (`/join/[token]`), not an absolute URL —
+the browser supplies the origin, which avoids both trusting the `Host` header and adding an `APP_URL`
+env var. `InviteDrawer` shows the link, copies it, and keeps it visible because `navigator.clipboard`
+needs a secure context and fails on plain HTTP. Three of the story's five ACs were already delivered by
+1.3 (mutual pair, signed-in auto-connect, self-invite no-op) and were verified rather than rebuilt.
+
+**The invite button sits in the CrewZone header as an interim home** — Story 5.3 owns Settings and
+should absorb that drawer.
+
+**Story 5.2 is done.** `break.list` now returns **every Break the caller can see**, each flagged
+`isSaved`; `break.crewBreaks` is deleted. **The swipe stack is still saved Breaks only** — the story's AC
+said otherwise but the PRD is explicit twice over (FR-2 swipes "their saved Breaks", FR-4b's unsave
+"removes it from the user's swipe stack"), and auto-filling the stack would make `save`/`unsave`
+meaningless. `BreakSwipeStack` filters on `isSaved`; `BreaksDrawer` splits the same rows into "yours"
+and "your crew's".
+
+**Break visibility ≠ presence visibility, and conflating them leaks.** Two people can both be crew with
+a Break's creator without being crew with each other — seeing the Break must not mean seeing each
+other's check-ins (NFR-7). `listCrewUserIds` now scopes check-ins in **both** `break.list` and the SSE
+route. If you add a third reader of check-in data, scope it or it leaks.
+
+`crew.joined` is the first event that is not about a Break, so `PresenceEvent.breakId` is now
+`string | null` — handle the null case in anything that consumes it. It fires only for a genuinely new
+pair and rebuilds both of the stream's sets before the client refetches.
+
+**Story 5.3 is done — Epic 5 is complete.** `/settings` holds Breaks, Crew, Notifications
+(placeholders), Invite link and Sign out. **`BreaksDrawer` and `InviteDrawer` are deleted** — their
+contents are `SettingsBreaks` and `SettingsInvite`, because two surfaces for one set of mutations is
+what a Settings screen exists to prevent. The CrewZone header is now just "+" and a gear; **adding** a
+Break stays there deliberately, one tap from what you are looking at.
+
+`crew.remove` deletes **both** direction rows (a one-sided connection is a state nothing else models)
+and emits `crew.removed`, the mirror of `crew.joined` — same null `breakId`, same stream branch, rebuild
+both sets and refetch. Removal severs *presence*, not places: saved Breaks stay, because a Break you
+saved is a spot you surf, not a friendship.
+
+**Sign-out exists at last** (deferred since 1.3): a Server Action, because tRPC cannot clear a cookie
+here, and it **deletes the session row** as well — clearing only the cookie would leave a token that
+never expires still valid in the database.
+
+**Story 6.1 is done — the PWA is wired.** `@serwist/next` compiles `src/app/sw.ts` into `public/sw.js`
+at build time (gitignored, and the Dockerfile's existing `COPY public` ships it). `public/manifest.json`
+plus generated icons; `layout.tsx` carries the manifest link, `appleWebApp` metadata and `themeColor`.
+An inline `NotificationPrompt` states the iOS install requirement during onboarding — never a browser
+alert (NFR-5).
+
+Three things to know before touching it:
+
+- **The presence stream is `NetworkOnly` in the worker.** An SSE response never completes, so caching it
+  either hangs waiting to store it or replays a truncated stream. tRPC caching is `NetworkFirst` and
+  **GET-only** — a replayed POST would check someone in twice.
+- **`src/app/sw.ts` and `public/` are excluded from `tsconfig.json`**, so `npm run typecheck` does not
+  cover the worker. `public/` must stay excluded: `checkJs` + `**/*.js` would type-check the generated
+  minified `sw.js` and fail the build.
+- **The middleware matcher excludes static assets by extension.** It used to list filenames, and 6.1's
+  icons landed outside that list and answered `307 -> /join-required` — an installed app would have had
+  no icon, with nothing in any log. Do not narrow it back.
+
+**6.1 needs a real-device pass.** Nothing about "Add to Home Screen", standalone launch, or the
+translucent status bar can be verified without an iPhone, and **Story 6.2's push depends on it** — iOS
+only permits push from an installed PWA.
+
+**Story 6.2 is done — push works up to the push service.** `src/server/push/web-push.ts` holds the
+lazy VAPID config, `sendToUsers(userIds, kind, payload)` and `sendToCrewMembers(actorId, breakId,
+payload)`; the `notification` router handles `publicKey`/`subscribe`/`unsubscribe`/`status`; the worker
+renders notifications; `NotificationPrompt` is the permission flow. **Real VAPID keys are in `.env`** —
+they need no vendor, so they were generated rather than requested.
+
+- **Recipients are filtered twice**: direct crew of the actor (NFR-7), *and* only people who can see
+  that Break. The actor never gets their own.
+- **Sending is fire-and-forget** — a check-in must not wait on APNs. Errors are logged, never thrown.
+- **Only 404/410 prune a subscription.** A transient error must not silently unsubscribe someone;
+  verified in both directions.
+- **`web-push` refuses plain HTTP endpoints** — worth knowing when testing locally; use a TLS receiver.
+
+**Story 6.3 is done.** `src/server/jobs/push-jobs.ts` registers `night-before-nudge` (21:00) and
+`dawn-patrol` (05:05), both in **`APP_TIMEZONE`** (default `America/New_York`) — pg-boss schedules in
+UTC, so without `tz` these drift an hour twice a year and a "night before" nudge arrives before dinner.
+Copy lives in `src/server/push/notification-templates.ts`.
+
+**The night-before message says "latest read", not a forecast.** FR-19 asks for next-day conditions and
+nothing here holds tomorrow's data — the poll caches the current model run only. If a forecast-ahead
+source ever lands, that copy is the thing to revisit.
+
+**Story 6.4 is done — Epic 6 and all 19 V1 stories are complete.** Real notification switches in
+Settings, and a measured accessibility audit.
+
+**The palette changed, and the numbers are load-bearing.** A full sweep found **seven** AA failures
+(replan correction 7 had recorded three — it never checked text on `--surface`, `--destructive`, or the
+`action-fg/50` labels added in 3.3). Now: `--text-secondary #71675a`, `--present #27764a`,
+`--destructive #cc2121`, `--stale #8b601c`, and raw-data labels at `/70`. All 13 pairs measure ≥4.5:1.
+**Do not "restore" the old lighter values** — they fail, and the UX spec's claim that they pass is wrong.
+
+**`--stale` now signals age by hue, not by fading.** At 10px a faded timestamp cannot meet AA (the
+large-text exemption starts at 18.66px bold), and any compliant grey collides with `--text-secondary`,
+erasing the fresh/stale distinction. It is a muted amber instead.
+
+**Bootstrap works now.** `prisma/seed.mjs` runs at container start between `migrate deploy` and
+`server.js` — verified inside the built image. Without it a fresh deploy has zero users and nobody,
+including the owner, can get in.
+
+**What is left is not code.** A **real-device pass** (install to home screen, receive a push) and a
+**conditions data source** to replace SwellCloud. See `deferred-work.md`.
+
+`break.crewBreaks` (Breaks your direct crew created that you have not saved) is a Story 2.3 stopgap so `break.save` is reachable from the UI at all — Story 5.2 widens `break.list` itself and should absorb it.
+
+**You can exercise server modules without booting Next.** There is no test runner, but a throwaway
+script can import real server code — `~` aliases, `~/env` validation and all:
+
+```
+npx tsx --env-file=.env --conditions=react-server <script.ts>
+```
+
+`--conditions=react-server` is load-bearing **for server modules**: the `server-only` package throws
+when imported outside a bundler, and that condition resolves it to a no-op. **Omit it for client
+components** — React's react-server build exports no `useState`/`useEffect`. This is how
+`generateVerdict` and the `ETAPicker` slot maths were both verified. Prefer it over booting a server
+when you only need to exercise one function.
+
+**Verifying against a running server: give each case its own port.** A `next start` that hits
+`EADDRINUSE` exits, and curl is then answered by the *previous* server — every result shifts by one run
+and reads as a code bug. This cost real time in Story 3.3. Check the log for `EADDRINUSE` before
+believing a result that contradicts the code in front of you.
 
 **UI conventions learned the hard way:** mount only one vaul drawer at a time (two roots fight over pointer handling; closing one to open another leaves the second invisible). Toasts are `position="top-center"` because every surface here is a bottom sheet. Leaflet must be `next/dynamic` with `ssr: false`.
 
@@ -89,6 +319,6 @@ Still absent: `src/server/{jobs,push}/`, every router except `crew` and `break`,
 
 **Cookies from tRPC:** mutations set cookies by appending to `ctx.resHeaders` (threaded in from the fetch adapter), never via `cookies().set()`. `resHeaders` is optional — the RSC caller has none.
 
-Implementation has diverged from the architecture doc in a few places — the code wins: PWA uses `@serwist/next` (not `@ducanh2912/next-pwa`, and it is installed but not yet wired to anything), shadcn/ui runs the `base-nova` style on `@base-ui/react`, and `pino` is not installed (logging is `console` for now).
+Implementation has diverged from the architecture doc in a few places — the code wins: PWA uses `@serwist/next` (not `@ducanh2912/next-pwa`, and it is installed but not yet wired to anything), and shadcn/ui runs the `base-nova` style on `@base-ui/react`. (`pino` was the third divergence; Story 3.1 installed it.)
 
 **Deploy is live.** `deploy.yml` fires on push to `main` (plus manual dispatch). It needs the `VPS_HOST`, `VPS_USER`, and `VPS_SSH_KEY` repository secrets.

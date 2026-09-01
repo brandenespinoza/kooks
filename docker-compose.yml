@@ -16,6 +16,12 @@ services:
 
   app:
     build: .
+    # Both `build` and `image` on purpose. Locally, `docker compose up --build` builds and
+    # tags this name. On the VPS, `KOOKS_IMAGE` points at the tag CI pushed to GHCR, so
+    # `docker compose pull` fetches it instead of rebuilding from whatever source happens to
+    # be sitting in /opt/kooks — which is what a build-only service silently does, deploying
+    # stale code while CI reports success.
+    image: ${KOOKS_IMAGE:-kooks:local}
     restart: unless-stopped
     ports:
       - "3000:3000"

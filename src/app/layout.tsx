@@ -16,13 +16,28 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Kooks",
   description: "Surf with your crew",
-  icons: [{ rel: "icon", url: "/favicon.ico" }],
+  applicationName: "Kooks",
+  manifest: "/manifest.json",
+  // NFR-4. `capable` is what makes Safari open the installed app without browser chrome,
+  // and `black-translucent` lets the navy VerdictBand paint behind the status bar (UX-DR1) —
+  // the same reason `layout.tsx` carries no safe-area padding of its own.
+  appleWebApp: {
+    capable: true,
+    title: "Kooks",
+    statusBarStyle: "black-translucent",
+  },
+  icons: [
+    { rel: "icon", url: "/favicon.ico" },
+    { rel: "apple-touch-icon", url: "/apple-touch-icon.png" },
+  ],
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // Matches the manifest, so the installed app's chrome is navy rather than white.
+  themeColor: "#1a3a5c",
 };
 
 export default function RootLayout({

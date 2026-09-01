@@ -37,5 +37,13 @@ USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-# Run migrations (from the CLI's own dependency tree) then start the standalone server
-CMD ["sh", "-c", "node cli/node_modules/prisma/build/index.js migrate deploy --schema prisma/schema.prisma && node server.js"]
+# Migrate, seed the primary user, then start the standalone server.
+#
+# The seed is what makes a fresh deployment reachable at all: without it the database has a
+# schema and no users, so `/` bounces to `/join-required` and `/join/<SEED_INVITE_TOKEN>`
+# 404s — nobody, including the owner, can get in. It is idempotent (upsert on `inviteToken`),
+# so running it on every container start costs one query and never creates a second user.
+#
+# Plain `node`, not `tsx`: the seed is `.mjs` precisely so the production start path needs no
+# devDependency. It resolves `@prisma/client` from the standalone output's own node_modules.
+CMD ["sh", "-c", "node cli/node_modules/prisma/build/index.js migrate deploy --schema prisma/schema.prisma && node prisma/seed.mjs && node server.js"]

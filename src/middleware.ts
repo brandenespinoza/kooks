@@ -29,10 +29,17 @@ export function middleware(request: NextRequest) {
 export const config = {
   /**
    * Everything except: tRPC and other API routes (they enforce their own auth and must be
-   * able to return 401 rather than a redirect), Next.js internals, PWA assets, and the
-   * unauthenticated entry points `/join/*` and `/join-required`.
+   * able to return 401 rather than a redirect), Next.js internals, the unauthenticated
+   * entry points `/join/*` and `/join-required`, and **any path with a static file
+   * extension**.
+   *
+   * That last clause is deliberately general. It previously named individual PWA files, and
+   * the icons added in Story 6.1 landed at `/icon-192.png` rather than the `/icons/`
+   * directory the pattern had guessed at — so they answered `307 -> /join-required`, which
+   * the browser fetching a manifest icon has no way to follow. An installed app would have
+   * had no icon. Matching on extension means the next asset cannot repeat it.
    */
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|manifest.json|icons|sw.js|join|join-required).*)",
+    "/((?!api|_next/static|_next/image|join|join-required|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp|json|js|txt|xml|webmanifest)$).*)",
   ],
 };

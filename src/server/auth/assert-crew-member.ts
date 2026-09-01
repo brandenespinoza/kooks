@@ -66,3 +66,56 @@ export async function assertCrewMember(ctx: CrewAuthContext, breakId: string) {
     message: "You are not connected to this Break's crew",
   });
 }
+
+/**
+ * The user plus their direct crew — the set whose presence they are allowed to see (NFR-7).
+ *
+ * Includes the caller, so it can be used directly as an `in` filter without a second
+ * condition for "my own check-in". Direct connections only: a friend of a friend is never
+ * in this set, which is what stops one crew member's check-in from being visible to another
+ * who happens to share a Break but not a connection.
+ */
+export async function listCrewUserIds(
+  db: PrismaClient,
+  userId: string,
+): Promise<string[]> {
+  const crew = await db.crewMember.findMany({
+    where: { userId },
+    select: { friendId: true },
+  });
+
+  return [userId, ...crew.map((member) => member.friendId)];
+}
+
+/**
+ * Every Break the user is allowed to see, by the same three rules `assertCrewMember`
+ * enforces one Break at a time: created by them, created by someone in their crew, or saved
+ * to their own list.
+ *
+ * Used by the SSE stream, which needs the whole set up front — asking `assertCrewMember` per
+ * event would be a database round trip per event per open connection.
+ */
+export async function listVisibleBreakIds(
+  db: PrismaClient,
+  userId: string,
+): Promise<string[]> {
+  const [crew, breaks, saved] = await Promise.all([
+    db.crewMember.findMany({ where: { userId }, select: { friendId: true } }),
+    db.break.findMany({ where: { createdById: userId }, select: { id: true } }),
+    db.userSavedBreak.findMany({ where: { userId }, select: { breakId: true } }),
+  ]);
+
+  const ids = new Set<string>();
+  for (const row of breaks) ids.add(row.id);
+  for (const row of saved) ids.add(row.breakId);
+
+  if (crew.length > 0) {
+    const crewBreaks = await db.break.findMany({
+      where: { createdById: { in: crew.map((member) => member.friendId) } },
+      select: { id: true },
+    });
+    for (const row of crewBreaks) ids.add(row.id);
+  }
+
+  return [...ids];
+}
