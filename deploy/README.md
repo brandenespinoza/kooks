@@ -151,6 +151,35 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T db \
 Linode's Backup service ($2/mo on a Nanode) covers the whole disk and is the
 lower-effort option.
 
+## Wiping all data
+
+`./deploy/reset-prod-data.sh` deletes every user, Break, crew connection, check-in,
+session and push subscription, then restarts the app so the seed recreates the primary
+user. Your invite link keeps working — the seed token does not change.
+
+It backs up to `~/kooks-backups/` first and pulls the dump to your laptop, then requires
+you to type the domain to confirm. It refuses to run non-interactively.
+
+```bash
+./deploy/reset-prod-data.sh
+```
+
+**It is a `TRUNCATE`, deliberately not `docker compose down -v`.** `down -v` removes named
+volumes, which here means two things people do not expect:
+
+- `kooks_caddy_data` holds the **TLS certificate**. Certificate authorities rate-limit
+  repeat issuance for a hostname, so a couple of careless `down -v` cycles can leave the
+  site without HTTPS for hours.
+- the `pgboss` schema holds the four registered cron schedules.
+
+The script leaves the schema, migration history, pg-boss and certificate intact and
+removes only application rows. Note that `_prisma_migrations` is deliberately excluded
+from the truncate: clearing it makes Prisma believe no migration has run, and the next
+boot fails trying to reapply all of them against a schema that already exists.
+
+Everyone is signed out by this, and since the app has no sign-in path, each person
+re-joins via an invite link and gets a **new** account.
+
 ## Rollback
 
 Images are tagged `:latest` only, so there is no previous tag to roll back to.

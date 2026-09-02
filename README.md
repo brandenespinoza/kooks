@@ -70,9 +70,10 @@ Two constraints worth knowing before changing anything there:
 
 ## Project docs
 
-This project is driven by BMad workflows, and the specs are the source of truth for unimplemented work:
+This project is driven by BMad workflows. Those planning and agent artifacts — `CLAUDE.md`,
+`.claude/`, and `_bmad-output/` (PRD, architecture, epics, UX spec, per-story files, sprint
+plan, deferred work) — are **deliberately not versioned in this repository**. They live
+alongside it on the working machine.
 
-- [`CLAUDE.md`](CLAUDE.md) — conventions and architecture summary for agents
-- [`_bmad-output/planning-artifacts/`](_bmad-output/planning-artifacts/) — PRD, architecture (full Prisma schema, enforcement rules), epics, UX spec
-- [`_bmad-output/implementation-artifacts/sprint-plan.md`](_bmad-output/implementation-artifacts/sprint-plan.md) — story status across all 6 epics
-- [`_bmad-output/implementation-artifacts/deferred-work.md`](_bmad-output/implementation-artifacts/deferred-work.md) — accepted V1 shortcuts; check here before "fixing" something that looks wrong
+If you are picking this repo up without them, the code is the source of truth, and
+[`deploy/README.md`](deploy/README.md) is the operational runbook.

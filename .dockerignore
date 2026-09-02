@@ -1,0 +1,29 @@
+# The Dockerfile does `COPY . .` in the builder stage, so anything not listed here
+# is uploaded as build context and lands in an intermediate layer.
+
+# node_modules is the important one. The builder does
+#   COPY --from=deps /app/node_modules ./node_modules
+#   COPY . .
+# so without this line a local `docker compose up --build` copies the HOST's
+# node_modules straight over the Linux ones built in the deps stage — native
+# binaries and all. CI never hits it (a fresh checkout has none), which is exactly
+# the kind of bug that only ever appears on your own machine.
+node_modules
+.git
+.next
+.env
+.env.*
+!.env.example
+
+# Agent and planning artifacts — 6.6MB that the application image has no use for.
+CLAUDE.md
+.claude
+_bmad
+_bmad-output
+
+# Deployment tooling runs from the repo or the server, never from inside the image.
+deploy
+docker-compose*.yml
+
+.DS_Store
+*.log

@@ -62,3 +62,10 @@ yarn-error.log*
 /public/swe-worker-*.js
 /public/workbox-*.js
 .env.production
+
+# Agent and planning artifacts — local working files, deliberately not versioned here.
+# They still exist on disk; they are just not part of the application repo.
+CLAUDE.md
+.claude/
+_bmad/
+_bmad-output/
