@@ -24,6 +24,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The GHA cache below needs the docker-container driver. The runner's
+      # default buildx driver is `docker`, which cannot export cache at all —
+      # the build fails outright with "Cache export is not supported for the
+      # docker driver" rather than just skipping the cache.
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
       # linux/amd64 only, which is what a Linode is. If the target ever moves to
       # an ARM box (a Raspberry Pi, an Ampere instance), add:
       #   platforms: linux/amd64,linux/arm64
