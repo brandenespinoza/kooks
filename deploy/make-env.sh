@@ -96,12 +96,17 @@ DATABASE_URL="postgresql://postgres:${PGPASS}@db:5432/kooks"
 SEED_INVITE_TOKEN="${SEED_TOKEN}"
 
 # --- conditions ---
-# SwellCloud has never completed a connection (owner's call 2026-09-01: tabled,
-# a different provider will likely be needed). Left as the real source on purpose:
-# CONDITIONS_SOURCE=mock in production would put invented surf numbers on a go/no-go
-# screen. With this unreachable the verdict stays null and the UI says so honestly.
+# SwellCloud has never completed a connection (tabled 2026-09-01; Open-Meteo Marine is the
+# leading replacement). Until one lands this runs on synthetic conditions, so the poll, the
+# FR-8 model-run gate and the LLM verdict are all exercised instead of sitting dark behind a
+# dead upstream. Owner's call 2026-09-02, overriding the earlier "real source or nothing".
+#
+# The numbers are INVENTED, so the VerdictBand labels them "Simulated — not a forecast" on
+# every screen that shows them. If that label is ever removed, put this back to "swellcloud"
+# in the same commit. SWELLCLOUD_API_KEY is unread while this is "mock", but src/env.js
+# still requires it to be non-empty.
 SWELLCLOUD_API_KEY="placeholder"
-CONDITIONS_SOURCE="swellcloud"
+CONDITIONS_SOURCE="mock"
 OPENAI_API_KEY="${OPENAI_KEY}"
 
 # --- app ---

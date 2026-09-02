@@ -37,6 +37,7 @@ export function BreakScreen({
         breakCount={breakCount}
         activeIndex={activeIndex}
         isHomeBreak={surfBreak?.isHomeBreak ?? false}
+        isSimulated={surfBreak?.conditionsAreSimulated ?? false}
       />
       <CrewZone
         isLoading={isLoading}

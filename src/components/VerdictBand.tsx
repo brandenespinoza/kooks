@@ -31,6 +31,7 @@ export function VerdictBand({
   breakCount,
   activeIndex,
   isHomeBreak = false,
+  isSimulated = false,
 }: {
   label: string;
   verdict: string | null;
@@ -40,6 +41,7 @@ export function VerdictBand({
   breakCount: number;
   activeIndex: number;
   isHomeBreak?: boolean;
+  isSimulated?: boolean;
 }) {
   const [rawDataOpen, setRawDataOpen] = useState(false);
   const panelId = useId();
@@ -80,6 +82,19 @@ export function VerdictBand({
           </p>
         )}
       </div>
+
+      {/*
+        CONDITIONS_SOURCE=mock. The band is the go/no-go signal for paddling out, so
+        invented numbers have to say so on the same screen and at the same moment — not in
+        a log, and not behind the raw-data disclosure. It sits directly under the verdict
+        because the verdict is the claim it qualifies, and it renders for the raw-data
+        fallback too, since those numbers are just as synthetic.
+      */}
+      {!isLoading && isSimulated && (
+        <p className="mt-2.5 text-[11px] font-normal uppercase tracking-[0.14em] text-action-fg/70">
+          Simulated — not a forecast
+        </p>
+      )}
 
       {/* UX spec: verdict bottom margin 10px, toggle bottom margin 36px — the band's own
           pb-9 supplies the latter. */}

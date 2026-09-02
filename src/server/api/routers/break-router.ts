@@ -6,6 +6,7 @@ import {
   assertCrewMember,
   listCrewUserIds,
 } from "~/server/auth/assert-crew-member";
+import { env } from "~/env";
 import { emitter, type PresenceEvent } from "~/server/events";
 import { conditionsRawDataSchema } from "~/lib/swellcloud";
 import { webcamUrlFor } from "~/lib/webcams";
@@ -96,6 +97,11 @@ export const breakRouter = createTRPCRouter({
           conditionsVerdict: surfBreak.conditionsVerdict,
           conditionsUpdatedAt: surfBreak.conditionsUpdatedAt,
           rawData: parseRawData(surfBreak.rawData),
+          // The conditions on screen are synthetic (CONDITIONS_SOURCE=mock). Sent per row
+          // rather than as a separate query so the band can label them without a second
+          // round trip and without breaking the single-caller rule. It is a process-level
+          // fact, so every row carries the same value.
+          conditionsAreSimulated: env.CONDITIONS_SOURCE === "mock",
           webcamUrl: webcamUrlFor(surfBreak.label),
           checkIns: surfBreak.checkIns.map((checkIn) => ({
             id: checkIn.id,
