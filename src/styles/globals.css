@@ -17,7 +17,7 @@
  *
  * Typography scale reference (applied per-component as Tailwind utilities):
  * Verdict:      text-[28px] font-bold leading-[1.18] tracking-tight text-action-fg
- * Break name:   text-[12px] font-bold uppercase tracking-[0.14em] text-action-fg/70
+ * Break name:   text-[16px] font-bold uppercase tracking-[0.14em] text-action-fg/70
  *               (on the navy band, so action-fg/70 — --text-secondary fails AA there)
  * Crew name:    text-[16px] font-bold text-text-primary
  * ETA:          text-[13px] font-normal text-text-secondary
