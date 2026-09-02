@@ -52,7 +52,7 @@ export function VerdictBand({
   return (
     <header className="bg-action px-7 pt-[max(3.5rem,calc(env(safe-area-inset-top)+1rem))] pb-9">
       <div className="flex items-center justify-between gap-4">
-        <p className="flex min-w-0 items-center gap-2 text-[11px] font-normal uppercase tracking-[0.14em] text-action-fg/70">
+        <p className="flex min-w-0 items-center gap-2 text-[12px] font-bold uppercase tracking-[0.14em] text-action-fg/70">
           <span className="truncate">{label}</span>
           {/* FR-4a: the Home Break is distinguished by a word, not by colour alone. */}
           {isHomeBreak && (
