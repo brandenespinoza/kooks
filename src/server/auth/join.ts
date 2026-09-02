@@ -4,6 +4,7 @@ import { type PrismaClient } from "@prisma/client";
 
 import { db } from "~/server/db";
 import { createSession } from "~/server/auth/session";
+import { generateToken } from "~/server/auth/tokens";
 import { emitter, type PresenceEvent } from "~/server/events";
 
 export type JoinResult =
@@ -82,6 +83,8 @@ export async function joinViaInvite({
   const user = await db.user.create({
     data: {
       displayName: name,
+      // Their own invite link, generated rather than defaulted — see ~/server/auth/tokens.
+      inviteToken: generateToken(),
       // All three notification types default to true (Story 6.4 AC).
       notificationPrefs: { create: {} },
     },

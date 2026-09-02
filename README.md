@@ -39,7 +39,6 @@ All variables are validated at startup by [`src/env.js`](src/env.js) (T3 env + Z
 | `OPENAI_API_KEY` | Conditions verdict generation — server-side only |
 | `WEBCAM_URLS_JSON` | JSON map of Break label → webcam URL |
 | `WEB_PUSH_PUBLIC_KEY` / `WEB_PUSH_PRIVATE_KEY` / `WEB_PUSH_EMAIL` | VAPID keys — `npx web-push generate-vapid-keys`; email must start with `mailto:` |
-| `SESSION_SECRET` | 32+ chars — `openssl rand -base64 32` |
 
 ## Commands
 

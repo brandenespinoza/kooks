@@ -53,7 +53,6 @@ echo "Generating secrets..."
 
 # 32 random bytes each. Not cuid: these are bearer secrets and want real entropy.
 PGPASS=$(openssl rand -base64 32 | tr -d '/+=' | cut -c1-32)
-SESSION_SECRET=$(openssl rand -base64 32)
 SEED_TOKEN=$(uuidgen | tr '[:upper:]' '[:lower:]')
 
 # VAPID keypair, from the web-push package already in node_modules.
@@ -95,7 +94,6 @@ DATABASE_URL="postgresql://postgres:${PGPASS}@db:5432/kooks"
 # every container start, so it is how you get into a fresh deployment:
 #   https://${DOMAIN}/join/${SEED_TOKEN}
 SEED_INVITE_TOKEN="${SEED_TOKEN}"
-SESSION_SECRET="${SESSION_SECRET}"
 
 # --- conditions ---
 # SwellCloud has never completed a connection (owner's call 2026-09-01: tabled,
@@ -130,8 +128,7 @@ Copy it up once the Linode exists:
 
   scp ${OUT} deploy@<ip>:/opt/kooks/.env
 
-Keep a copy somewhere safe. SESSION_SECRET and the VAPID keys are not
-recoverable from the server if you lose the box, and regenerating the VAPID
-pair unsubscribes everyone.
+Keep a copy somewhere safe. The VAPID keys are not recoverable from the
+server if you lose the box, and regenerating the pair unsubscribes everyone.
 
 SUMMARY

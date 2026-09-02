@@ -2,6 +2,7 @@ import "server-only";
 
 import { db } from "~/server/db";
 import { env } from "~/env";
+import { generateToken } from "~/server/auth/tokens";
 
 export const SESSION_COOKIE_NAME = "kooks-session";
 
@@ -14,7 +15,8 @@ export type SessionWithUser = NonNullable<
 
 /**
  * Minimal cookie-header parser. Avoids a dependency for the one header we read.
- * Values are not URL-decoded: session tokens are cuids, which are already safe.
+ * Values are not URL-decoded, and do not need to be: tokens are base64url, whose alphabet
+ * (`A-Za-z0-9-_`) contains nothing a cookie value would have escaped.
  */
 function readCookie(headers: Headers, name: string): string | null {
   const header = headers.get("cookie");
@@ -46,7 +48,7 @@ export async function getSessionFromHeaders(headers: Headers) {
 }
 
 export async function createSession(userId: string) {
-  return db.session.create({ data: { userId } });
+  return db.session.create({ data: { userId, token: generateToken() } });
 }
 
 export async function deleteSession(token: string) {

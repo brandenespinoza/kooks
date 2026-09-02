@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { env } from "~/env";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { assertCrewMember } from "~/server/auth/assert-crew-member";
 import { emitter, type PresenceEvent } from "~/server/events";
@@ -232,9 +233,26 @@ function notify(
   });
 }
 
-/** Matches the ETA formatting on the crew rows — "6:45 am". */
+/**
+ * Matches the ETA formatting on the crew rows — "6:45 am".
+ *
+ * **`timeZone` is not optional here, and the locale is not either.** This copy is built on
+ * the server, where the ambient timezone is the container's — UTC, since `node:24-alpine`
+ * carries no tzdata and nothing sets `TZ`. Without the option a 6:45am check-in went out to
+ * the lock screen as "10:45 am", which is not a cosmetic bug: it is a push telling someone
+ * their crew is surfing four hours from now. Node ships full ICU, so naming the zone works
+ * even though the OS has no zone database, which is why this is the fix and `TZ` in compose
+ * is not.
+ *
+ * The sibling `formatEta` in `CrewMemberRow.tsx` correctly passes neither — it runs in the
+ * browser, where the ambient zone and locale are the user's and are the right answer.
+ */
 function formatEta(eta: Date): string {
   return eta
-    .toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    .toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: env.APP_TIMEZONE,
+    })
     .toLowerCase();
 }

@@ -31,7 +31,6 @@ export const env = createEnv({
     WEB_PUSH_PUBLIC_KEY: z.string().min(1),
     WEB_PUSH_PRIVATE_KEY: z.string().min(1),
     WEB_PUSH_EMAIL: z.string().startsWith("mailto:", "WEB_PUSH_EMAIL must start with mailto:"),
-    SESSION_SECRET: z.string().min(32),
   },
 
   client: {},
@@ -48,7 +47,6 @@ export const env = createEnv({
     WEB_PUSH_PUBLIC_KEY: process.env.WEB_PUSH_PUBLIC_KEY,
     WEB_PUSH_PRIVATE_KEY: process.env.WEB_PUSH_PRIVATE_KEY,
     WEB_PUSH_EMAIL: process.env.WEB_PUSH_EMAIL,
-    SESSION_SECRET: process.env.SESSION_SECRET,
   },
 
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

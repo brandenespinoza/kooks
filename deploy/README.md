@@ -68,9 +68,9 @@ ssh root@<ip> 'bash /tmp/bootstrap.sh'
 scp .env.production deploy@<ip>:/opt/kooks/.env
 ```
 
-The script generates the Postgres password, `SESSION_SECRET`, the seed invite token
-and a fresh VAPID keypair; it asks you only for the things it cannot know. Nothing
-is transmitted anywhere — you copy it up yourself.
+The script generates the Postgres password, the seed invite token and a fresh VAPID
+keypair; it asks you only for the things it cannot know. Nothing is transmitted
+anywhere — you copy it up yourself.
 
 **Keep a copy.** The VAPID keys are not recoverable from the server, and
 regenerating them unsubscribes every device that has already granted permission.
