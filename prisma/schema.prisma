@@ -20,6 +20,7 @@ model User {
   createdAt   DateTime @default(now()) @map("created_at")
 
   sessions          Session[]
+  credentials       Credential[]
   pushSubscriptions PushSubscription[]
   checkIns          CheckIn[]
   createdBreaks     Break[]            @relation("BreakCreator")
@@ -53,10 +54,10 @@ model Break {
   createdAt   DateTime @default(now()) @map("created_at")
 
   // Conditions cache — written by conditions-jobs, read by conditionsRouter. No separate cache layer.
-  conditionsVerdict String? @map("conditions_verdict")
-  rawData           Json?   @map("raw_data")
+  conditionsVerdict    String?   @map("conditions_verdict")
+  rawData              Json?     @map("raw_data")
   // When we last polled SwellCloud (FR-7: no older than 30 min).
-  conditionsUpdatedAt DateTime? @map("conditions_updated_at")
+  conditionsUpdatedAt  DateTime? @map("conditions_updated_at")
   // The SwellCloud model-run timestamp the cached data came from. The LLM verdict is
   // regenerated only when this changes (FR-8: 4x daily), not on every 30-min poll.
   conditionsModelRunAt DateTime? @map("conditions_model_run_at")
@@ -134,4 +135,59 @@ model NotificationPref {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notification_prefs")
+}
+
+/// A registered passkey (WebAuthn credential). One user has many — that is the point:
+/// enrolling a second device is how you get a second way in.
+model Credential {
+  id String @id @default(cuid()) @map("id")
+
+  userId       String @map("user_id")
+  /// base64url, as the authenticator reports it. Unique across every user, not just within
+  /// one: sign-in looks a credential up *before* it knows whose account it is.
+  credentialId String @unique @map("credential_id")
+  publicKey    Bytes  @map("public_key")
+
+  /// Signature counter. Stored, but deliberately never gated on: synced passkeys (iCloud
+  /// Keychain, Google Password Manager) report 0 forever, so treating a non-increment as a
+  /// cloned authenticator would lock out every ordinary user. See verifySignIn.
+  counter Int @default(0) @map("counter")
+
+  /// Hints the browser uses to reach this authenticator again ("internal", "hybrid", …).
+  transports String[] @map("transports")
+
+  /// Free text for the Settings list, so "remove" is not a guess between two hashes.
+  deviceLabel String?   @map("device_label")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  lastUsedAt  DateTime? @map("last_used_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("credentials")
+}
+
+/// A pending WebAuthn challenge. Server-side rather than a signed cookie because this app
+/// has no signing secret — `SESSION_SECRET` was deliberately removed, and Postgres is
+/// already here.
+///
+/// Rows are consumed on use and swept opportunistically at the top of each ceremony, so
+/// this needs no pg-boss job.
+model WebAuthnChallenge {
+  id        String @id @default(cuid()) @map("id")
+  challenge String @unique @map("challenge")
+
+  /// Null for sign-in. Discoverable credentials mean the user is unknown until the
+  /// assertion comes back carrying a userHandle — which is the whole reason sign-in works
+  /// with no email and nothing to type. Set only for registration, which is authenticated.
+  ///
+  /// Not a relation: the row is ephemeral and self-expiring, and a FK would add a
+  /// back-reference on User for something that lives sixty seconds.
+  userId String? @map("user_id")
+
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([expiresAt])
+  @@map("webauthn_challenges")
 }

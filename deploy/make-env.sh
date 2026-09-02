@@ -95,6 +95,13 @@ DATABASE_URL="postgresql://postgres:${PGPASS}@db:5432/kooks"
 #   https://${DOMAIN}/join/${SEED_TOKEN}
 SEED_INVITE_TOKEN="${SEED_TOKEN}"
 
+# Passkeys are how an existing user signs in on a new phone — the invite link above only
+# ever creates a *new* account. Both are derived from the domain and must match it exactly:
+# the platform binds every registered passkey to PASSKEY_RP_ID, so changing the domain later
+# invalidates every credential and locks out anyone without a second enrolled device.
+PASSKEY_RP_ID="${DOMAIN}"
+PASSKEY_ORIGIN="https://${DOMAIN}"
+
 # --- conditions ---
 # SwellCloud has never completed a connection (tabled 2026-09-01; Open-Meteo Marine is the
 # leading replacement). Until one lands this runs on synthetic conditions, so the poll, the

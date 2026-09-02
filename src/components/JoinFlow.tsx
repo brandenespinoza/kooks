@@ -40,8 +40,11 @@ export function JoinFlow({
       if (result.connectedTo) {
         toast.success(`You're connected with ${result.connectedTo}`);
       }
+      // A brand-new account has no passkey yet, and a passkey is the only thing that can
+      // return it to a different device later. Straight to enrolment; the gate on `/` would
+      // bounce them there anyway, this just saves the hop.
       // replace(), not push() — the invite URL should not sit in the back stack.
-      router.replace("/");
+      router.replace(result.createdAccount ? "/passkey-setup" : "/");
       router.refresh();
     });
   }

@@ -4,6 +4,7 @@ import { breakRouter } from "~/server/api/routers/break-router";
 import { conditionsRouter } from "~/server/api/routers/conditions-router";
 import { checkInRouter } from "~/server/api/routers/check-in-router";
 import { notificationRouter } from "~/server/api/routers/notification-router";
+import { passkeyRouter } from "~/server/api/routers/passkey-router";
 
 /**
  * Primary tRPC router for Kooks.
@@ -15,6 +16,7 @@ export const appRouter = createTRPCRouter({
   conditions: conditionsRouter,
   checkIn: checkInRouter,
   notification: notificationRouter,
+  passkey: passkeyRouter,
 });
 
 export type AppRouter = typeof appRouter;

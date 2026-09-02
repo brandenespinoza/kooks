@@ -31,6 +31,20 @@ export const env = createEnv({
     WEB_PUSH_PUBLIC_KEY: z.string().min(1),
     WEB_PUSH_PRIVATE_KEY: z.string().min(1),
     WEB_PUSH_EMAIL: z.string().startsWith("mailto:", "WEB_PUSH_EMAIL must start with mailto:"),
+    // WebAuthn relying-party identity.
+    //
+    // RP_ID is the bare domain a passkey is scoped to — no scheme, no port ("localhost" in
+    // dev, the Caddy domain in production). The platform binds every credential to this
+    // value, so changing it silently invalidates every passkey already registered and
+    // locks out everyone who has no other device. Treat it as permanent.
+    PASSKEY_RP_ID: z.string().min(1),
+    // Full origin(s) a ceremony may run on, comma-separated. Scheme and any non-default
+    // port included ("http://localhost:3000"). An installed PWA reports the same origin as
+    // the browser it was installed from, so one entry covers both.
+    //
+    // Neither of these gets a default: there is no value that is safe to guess, and a wrong
+    // RP ID fails at the authenticator with an opaque browser error rather than at boot.
+    PASSKEY_ORIGIN: z.string().min(1),
   },
 
   client: {},
@@ -47,6 +61,8 @@ export const env = createEnv({
     WEB_PUSH_PUBLIC_KEY: process.env.WEB_PUSH_PUBLIC_KEY,
     WEB_PUSH_PRIVATE_KEY: process.env.WEB_PUSH_PRIVATE_KEY,
     WEB_PUSH_EMAIL: process.env.WEB_PUSH_EMAIL,
+    PASSKEY_RP_ID: process.env.PASSKEY_RP_ID,
+    PASSKEY_ORIGIN: process.env.PASSKEY_ORIGIN,
   },
 
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

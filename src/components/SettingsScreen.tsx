@@ -8,6 +8,7 @@ import { SettingsBreaks } from "~/components/SettingsBreaks";
 import { SettingsCrew } from "~/components/SettingsCrew";
 import { SettingsInvite } from "~/components/SettingsInvite";
 import { SettingsNotifications } from "~/components/SettingsNotifications";
+import { SettingsPasskeys } from "~/components/SettingsPasskeys";
 
 /**
  * FR-17. Everything that is not the Break screen, in one place.
@@ -49,6 +50,10 @@ export function SettingsScreen() {
 
         <Section title="Invite link">
           <SettingsInvite />
+        </Section>
+
+        <Section title="Passkeys">
+          <SettingsPasskeys />
         </Section>
 
         <Section title="Account">

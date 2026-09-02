@@ -14,14 +14,21 @@ export const dynamic = "force-dynamic";
  * auth failure bounces the user to the invite wall.
  */
 export default async function SettingsPage() {
+  let me;
+
   try {
-    await api.crew.me();
+    me = await api.crew.me();
   } catch (error) {
     if (error instanceof TRPCError && error.code === "UNAUTHORIZED") {
       redirect("/join-required");
     }
     throw error;
   }
+
+  // The mandatory passkey gate. Here rather than in middleware because middleware runs on
+  // the Edge Runtime and cannot reach Prisma (enforcement rule 15) — and `crew.me` is
+  // already being called as the auth guard, so this costs no extra round trip.
+  if (!me.hasPasskey) redirect("/passkey-setup");
 
   return <SettingsScreen />;
 }

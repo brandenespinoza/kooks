@@ -93,12 +93,24 @@ export const crewRouter = createTRPCRouter({
       return { userId: input.userId };
     }),
 
-  /** Smallest possible proof that the session cookie resolves to a user (AC 4, AC 6). */
-  me: protectedProcedure.query(({ ctx }) => {
+  /**
+   * Smallest possible proof that the session cookie resolves to a user (AC 4, AC 6).
+   *
+   * Also carries `hasPasskey`, which is the mandatory-enrolment gate. It rides here rather
+   * than in middleware because middleware runs on the Edge Runtime and cannot reach Prisma
+   * (enforcement rule 15) — and `/` and `/settings` already call this procedure as their
+   * auth guard, so the gate costs no extra round trip.
+   */
+  me: protectedProcedure.query(async ({ ctx }) => {
+    const credentialCount = await ctx.db.credential.count({
+      where: { userId: ctx.user.id },
+    });
+
     return {
       id: ctx.user.id,
       displayName: ctx.user.displayName,
       homeBreakId: ctx.user.homeBreakId,
+      hasPasskey: credentialCount > 0,
     };
   }),
 });
