@@ -1,0 +1,55 @@
+# Production overlay. Used together with the base file, never on its own:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# The deploy workflow passes both. Everything here is specific to running on a
+# public host: TLS termination, and memory ceilings sized for a 1GB Nanode.
+#
+# This stack is self-contained on purpose — it terminates its own TLS and shares
+# nothing with any other host. Nothing outside it needs to be reachable, and
+# nothing inside it is reachable except through Caddy.
+services:
+  app:
+    # The base file binds the app to 127.0.0.1. Caddy reaches it over the compose
+    # network as `app:3000`, not through that published port — the mapping exists
+    # only so you can curl it from the box while debugging.
+    environment:
+      NODE_ENV: production
+    deploy:
+      resources:
+        limits:
+          # Next.js standalone idles near 200MB. The ceiling exists so a leak
+          # takes the app down and restarts it, rather than taking Postgres
+          # with it and losing the database mid-write.
+          memory: 512M
+
+  db:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates live here. Losing this volume means re-issuing on next boot,
+      # and Let's Encrypt rate-limits repeat issuance for the same name.
+      - caddy_data:/data
+      - caddy_config:/config
+      - caddy_logs:/var/log/caddy
+    environment:
+      KOOKS_DOMAIN: ${KOOKS_DOMAIN:?set KOOKS_DOMAIN in /opt/kooks/.env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in /opt/kooks/.env}
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:
+  caddy_logs:

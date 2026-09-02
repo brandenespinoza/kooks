@@ -9,7 +9,7 @@ A surf-crew presence PWA. Crew members check in at a Break with an ETA; the crew
 > synthetic conditions. Everything downstream of the fetch — the 30-minute poll, the model-run gate, the
 > LLM verdict, the raw-data panel — is built and verified; only the data source is open.
 
-Built for a crew of about four people at one break. Architectural choices assume that scale: an in-process EventEmitter for SSE fan-out, pg-boss on the same Postgres, a single self-hosted instance behind Nginx Proxy Manager.
+Built for a crew of about four people at one break. Architectural choices assume that scale: an in-process EventEmitter for SSE fan-out, pg-boss on the same Postgres, a single self-hosted instance on its own Linode, terminating its own TLS and sharing nothing with any other host.
 
 ## Stack
 
@@ -57,9 +57,16 @@ There is no ESLint, Prettier, or test runner configured. Verification for a chan
 
 ## Deployment
 
-Push to `main` → GitHub Actions builds the image → GHCR → SSH to the VPS → `docker compose pull && up -d`. The container runs `prisma migrate deploy` before `server.js`, so **every schema change must ship with a committed migration**. The Prisma engine/client/schema `COPY` lines in the [Dockerfile](Dockerfile) are load-bearing — Next.js standalone output does not trace them.
+Push to `main` → GitHub Actions builds the image → GHCR → copies the compose files up → SSH → `docker compose pull && up -d` → polls until the app answers. The container runs `prisma migrate deploy` and `prisma/seed.mjs` before `server.js`, so **every schema change must ship with a committed migration**. The Prisma engine/client/schema `COPY` lines in the [Dockerfile](Dockerfile) are load-bearing — Next.js standalone output does not trace them.
 
-The deploy workflow is currently **manual-dispatch only** while Epic 1 is in progress. It requires the `VPS_HOST`, `VPS_USER`, and `VPS_SSH_KEY` repository secrets.
+Requires the `VPS_HOST`, `VPS_USER` and `VPS_SSH_KEY` repository secrets.
+
+**Target: a 1GB Linode (Debian 12 or Ubuntu 24.04).** Three containers — app, Postgres, and Caddy terminating TLS for a subdomain. The full first-time runbook, including server bootstrap and secret generation, is in **[deploy/README.md](deploy/README.md)**.
+
+Two constraints worth knowing before changing anything there:
+
+- The app is bound to `127.0.0.1:3000` on purpose. Caddy reaches it over the compose network; publishing it broadly would serve the app over plain HTTP on the public IP, and both web push and the iOS install prompt need a secure context.
+- The image is built `linux/amd64` only. That matches a Linode. Retargeting at an ARM host means adding `platforms:` and QEMU to the build step, or the container dies on `exec format error`.
 
 ## Project docs
 

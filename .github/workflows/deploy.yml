@@ -24,21 +24,78 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # linux/amd64 only, which is what a Linode is. If the target ever moves to
+      # an ARM box (a Raspberry Pi, an Ampere instance), add:
+      #   platforms: linux/amd64,linux/arm64
+      # and a docker/setup-qemu-action step before this one — otherwise the pull
+      # succeeds and the container dies on `exec format error`.
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: ghcr.io/${{ github.repository }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Deploy to VPS
+      # The server runs whatever compose files are on disk, so they have to travel
+      # with the deploy. Copying them beats cloning the repo onto the box: no
+      # repository credentials live on the server, and the files can never drift
+      # from the image they were built alongside.
+      - name: Copy compose files and Caddyfile
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "docker-compose.yml,docker-compose.prod.yml,deploy/Caddyfile"
+          target: /opt/kooks
+          overwrite: true
+
+      - name: Deploy
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          # Short-lived and scoped to this run, so no long-lived PAT sits on the
+          # server. Needed whenever the GHCR package is private — without it
+          # `compose pull` fails with a 401 that reads like a missing image.
+          envs: GHCR_ACTOR,GHCR_TOKEN
           script: |
+            set -euo pipefail
             cd /opt/kooks
-            docker compose pull
-            docker compose up -d
+
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin
+
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+            docker logout ghcr.io
             docker image prune -f
+
+            # The container runs `migrate deploy` then the seed then server.js, so
+            # a slow first boot is normal. Fail the deploy loudly rather than
+            # leaving a green tick over a container in a crash loop.
+            #
+            # Probed from INSIDE the container rather than the host. It makes the
+            # check independent of how the port is published, and `node` is
+            # guaranteed present in that image in a way `curl` is not. This proves
+            # the app is up; TLS is verified separately (see deploy/README.md).
+            echo "Waiting for the app to answer..."
+            PROBE='fetch("http://127.0.0.1:3000/join-required").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'
+            for i in $(seq 1 30); do
+              if docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+                   exec -T app node -e "$PROBE" 2>/dev/null; then
+                echo "Healthy after ${i} attempt(s)."
+                exit 0
+              fi
+              sleep 5
+            done
+
+            echo "App did not become healthy within 150s. Recent logs:" >&2
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=60 app >&2
+            exit 1
+        env:
+          GHCR_ACTOR: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}

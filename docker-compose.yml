@@ -4,7 +4,10 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      # Defaults to `password` so local `docker compose up` stays zero-config. On a
+      # public host set a real one in /opt/kooks/.env — the port is never published,
+      # but "unreachable" and "unauthenticated" should not be the same line of defence.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
       POSTGRES_DB: kooks
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -23,12 +26,18 @@ services:
     # stale code while CI reports success.
     image: ${KOOKS_IMAGE:-kooks:local}
     restart: unless-stopped
+    # Loopback only. Locally this is identical to publishing broadly — you still
+    # reach it at localhost:3000. In production it is what stops the app being
+    # served over plain HTTP on the public IP, bypassing Caddy and its TLS; push
+    # subscriptions and the iOS install prompt both die without a secure context,
+    # so an accidental HTTP entry point is not a cosmetic problem. Caddy reaches
+    # the app over the compose network as `app:3000`, not through this mapping.
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://postgres:password@db:5432/kooks
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@db:5432/kooks
     depends_on:
       db:
         condition: service_healthy

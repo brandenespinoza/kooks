@@ -1,0 +1,64 @@
+# Reverse proxy and TLS for Kooks.
+#
+# This deployment is deliberately self-contained: the Linode terminates its own TLS
+# and depends on no proxy elsewhere. Caddy obtains and renews a Let's Encrypt
+# certificate for KOOKS_DOMAIN automatically — no certbot cron, no renewal to
+# forget. Both variables come from /opt/kooks/.env via docker-compose.prod.yml.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$KOOKS_DOMAIN} {
+	# --------------------------------------------------------------------
+	# The presence stream, handled separately and FIRST.
+	#
+	# Two things would break it inside the general handler below:
+	#
+	#   1. `encode`. Compressing a text/event-stream makes the compressor hold
+	#      bytes back until it has a worthwhile block — which is exactly the
+	#      buffering NFR-2 forbids. Events would arrive in clumps, or not until
+	#      the connection closed.
+	#   2. Response buffering. `flush_interval -1` forces Caddy to flush every
+	#      write straight through. Caddy infers this for text/event-stream on its
+	#      own, but the app's 25s heartbeat is the only traffic on an idle stream
+	#      and it is not worth depending on inference for the one route where a
+	#      silent regression looks like "presence is just slow".
+	#
+	# The app also sends `X-Accel-Buffering: no`. That header is Nginx-specific
+	# and does nothing here — leave it. It is what makes the app correct behind
+	# the Nginx Proxy Manager setup it was written for, and this file is not the
+	# only proxy it may ever sit behind.
+	# --------------------------------------------------------------------
+	@sse path /api/presence/stream
+	handle @sse {
+		reverse_proxy app:3000 {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		encode zstd gzip
+		reverse_proxy app:3000
+	}
+
+	# The service worker must never be served stale: a pinned sw.js keeps an old
+	# precache manifest alive and the app stops updating for everyone who installed it.
+	@sw path /sw.js
+	header @sw Cache-Control "no-cache, no-store, must-revalidate"
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 10MiB
+			roll_keep 3
+		}
+	}
+}
